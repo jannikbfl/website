@@ -3,256 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Balkonkraftwerk Idle</title>
+    <title>Jannik Biefel</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
-    
-    <div class="max-w-3xl mx-auto bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl relative">
+<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4 font-sans">
+    <main class="max-w-md w-full bg-slate-800 border border-slate-700 rounded-2xl p-8 text-center shadow-xl space-y-6 relative overflow-hidden">
         
-        <!-- Zurück-Button -->
-        <a href="index.html" class="absolute top-4 left-4 text-sm text-slate-400 hover:text-white transition">
-            &larr; Zurück
-        </a>
-
-        <h1 class="text-3xl font-bold text-center mt-6 mb-2 text-emerald-400">Balkonkraftwerk Idle</h1>
-        <p class="text-center text-slate-400 mb-8 text-sm">Produziere Strom, automatisiere dein Setup und optimiere dein Smart Home.</p>
-
-        <!-- Main Game Area -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            
-            <!-- Clicker & Stats -->
-            <div class="space-y-6 text-center bg-slate-700/50 p-6 rounded-xl border border-slate-600">
-                <h2 class="text-xl font-semibold">Dein Ertrag</h2>
-                
-                <div class="text-5xl font-bold text-yellow-400 my-4">
-                    <span id="energy-display">0</span> <span class="text-2xl">Wh</span>
-                </div>
-                
-                <div class="text-sm text-slate-300">
-                    Produktion: <span id="eps-display" class="font-bold text-white">0</span> Wh/s
-                </div>
-
-                <button id="click-btn" class="mt-4 w-full py-4 bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold text-lg rounded-xl shadow-[0_4px_14px_0_rgba(234,179,8,0.39)] transition active:scale-95">
-                    Sonne einfangen (+1 Wh)
-                </button>
+        <!-- Header / Profil -->
+        <div>
+            <div class="w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-4xl font-bold mx-auto mb-4 text-white shadow-[0_0_20px_rgba(59,130,246,0.5)] border-4 border-slate-800">
+                JB
             </div>
-
-            <!-- Upgrades -->
-            <div class="space-y-4">
-                <h2 class="text-xl font-semibold border-b border-slate-600 pb-2">Upgrades</h2>
-                
-                <!-- Upgrade 1 -->
-                <button id="buy-panel-btn" class="w-full flex justify-between items-center p-3 bg-slate-700 hover:bg-slate-600 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
-                    <div class="text-left">
-                        <div class="font-bold">Zusätzliches Panel</div>
-                        <div class="text-xs text-slate-300">+1 Wh/s</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-yellow-400 font-bold" id="panel-cost">15 Wh</div>
-                        <div class="text-xs text-slate-400">Besitz: <span id="panel-count">0</span></div>
-                    </div>
-                </button>
-
-                <!-- Upgrade 2 -->
-                <button id="buy-inverter-btn" class="w-full flex justify-between items-center p-3 bg-slate-700 hover:bg-slate-600 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
-                    <div class="text-left">
-                        <div class="font-bold">Wechselrichter-Tuning</div>
-                        <div class="text-xs text-slate-300">+5 Wh/s</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-yellow-400 font-bold" id="inverter-cost">100 Wh</div>
-                        <div class="text-xs text-slate-400">Besitz: <span id="inverter-count">0</span></div>
-                    </div>
-                </button>
-                
-                <!-- Upgrade 3 -->
-                <button id="buy-smart-btn" class="w-full flex justify-between items-center p-3 bg-slate-700 hover:bg-slate-600 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
-                    <div class="text-left">
-                        <div class="font-bold">Smart Meter Automation</div>
-                        <div class="text-xs text-slate-300">Macht Klicks stärker (+1 Wh/Klick)</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="text-yellow-400 font-bold" id="smart-cost">250 Wh</div>
-                        <div class="text-xs text-slate-400">Besitz: <span id="smart-count">0</span></div>
-                    </div>
-                </button>
-            </div>
+            <h1 class="text-3xl font-bold text-white tracking-tight">Jannik Biefel</h1>
+            <p class="text-blue-400 font-medium text-sm mt-1">Hardware Development & Engineering</p>
         </div>
 
-        <!-- Save/Load/Export Menu -->
-        <div class="mt-8 pt-6 border-t border-slate-700">
-            <h3 class="text-sm font-semibold text-slate-400 mb-3">Speicherverwaltung</h3>
-            <div class="flex flex-wrap gap-2 mb-4">
-                <button id="save-btn" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-xs rounded transition">Manuell Speichern</button>
-                <button id="reset-btn" class="px-4 py-2 bg-red-900/50 hover:bg-red-800 text-red-200 text-xs rounded transition">Spielstand löschen</button>
-            </div>
+        <!-- Kurze Info -->
+        <p class="text-slate-300 text-sm leading-relaxed">
+            Passion für Hardware, eingebettete Systeme & digitale Projekte.
+        </p>
+
+        <!-- Kontakt -->
+        <div class="pt-4 border-t border-slate-700/60 space-y-3">
+            <a href="mailto:jannik@biefel.de" class="flex items-center justify-center gap-2 w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition duration-200 shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+                E-Mail schreiben
+            </a>
             
-            <div class="flex gap-2">
-                <input type="text" id="save-code" class="w-full bg-slate-900 border border-slate-700 text-xs p-2 rounded text-slate-300 font-mono" placeholder="Dein Save-Code erscheint hier...">
-                <button id="export-btn" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-xs rounded transition">Code kopieren</button>
-                <button id="import-btn" class="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-xs rounded transition">Code importieren</button>
-            </div>
+            <!-- Login Button für das Spiel -->
+            <button id="login-btn" class="flex items-center justify-center gap-2 w-full py-3 px-4 bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white rounded-xl text-sm font-semibold transition duration-200 shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                Geheimer Bereich
+            </button>
         </div>
 
-    </div>
+        <!-- Verstecktes Passwort-Feld (wird durch Klick sichtbar) -->
+        <div id="login-form" class="hidden absolute inset-0 bg-slate-800/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 rounded-2xl">
+            <h3 class="text-white font-bold mb-4">Passwort eingeben</h3>
+            <input type="password" id="password-input" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-center text-white mb-4 focus:outline-none focus:border-blue-500" placeholder="••••">
+            <div class="flex gap-2 w-full">
+                <button id="cancel-btn" class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition">Abbrechen</button>
+                <button id="submit-btn" class="flex-1 py-2 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm font-bold transition">Login</button>
+            </div>
+            <p id="error-msg" class="text-red-400 text-xs mt-3 hidden">Falsches Passwort!</p>
+        </div>
 
-    <!-- Game Logic -->
+        <!-- Footer -->
+        <footer class="pt-4 text-xs text-slate-500">
+            &copy; biefel.de
+        </footer>
+    </main>
+
+    <!-- Login Logik -->
     <script>
-        // Game State Variables
-        let game = {
-            energy: 0,
-            energyPerClick: 1,
-            panels: 0,
-            panelCost: 15,
-            inverters: 0,
-            inverterCost: 100,
-            smartMeters: 0,
-            smartCost: 250
-        };
+        const loginBtn = document.getElementById('login-btn');
+        const loginForm = document.getElementById('login-form');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const passwordInput = document.getElementById('password-input');
+        const errorMsg = document.getElementById('error-msg');
 
-        // DOM Elements
-        const energyDisplay = document.getElementById('energy-display');
-        const epsDisplay = document.getElementById('eps-display');
-        const clickBtn = document.getElementById('click-btn');
-        
-        const buyPanelBtn = document.getElementById('buy-panel-btn');
-        const panelCostDisplay = document.getElementById('panel-cost');
-        const panelCountDisplay = document.getElementById('panel-count');
-        
-        const buyInverterBtn = document.getElementById('buy-inverter-btn');
-        const inverterCostDisplay = document.getElementById('inverter-cost');
-        const inverterCountDisplay = document.getElementById('inverter-count');
+        // HIER DEIN PASSWORT EINTRAGEN:
+        const SECRET_PASSWORD = "1234"; 
 
-        const buySmartBtn = document.getElementById('buy-smart-btn');
-        const smartCostDisplay = document.getElementById('smart-cost');
-        const smartCountDisplay = document.getElementById('smart-count');
-
-        const saveCodeInput = document.getElementById('save-code');
-
-        // Initial Load
-        loadGame();
-
-        // Game Loop (runs 10x a second for smooth UI)
-        setInterval(() => {
-            let eps = calculateEPS();
-            game.energy += eps / 10;
-            updateUI();
-        }, 100);
-
-        // Auto Save (every 10 seconds)
-        setInterval(saveGame, 10000);
-
-        // Click Action
-        clickBtn.addEventListener('click', () => {
-            game.energy += game.energyPerClick;
-            updateUI();
+        loginBtn.addEventListener('click', () => {
+            loginForm.classList.remove('hidden');
+            passwordInput.focus();
         });
 
-        // Buying Logic
-        buyPanelBtn.addEventListener('click', () => {
-            if (game.energy >= game.panelCost) {
-                game.energy -= game.panelCost;
-                game.panels++;
-                game.panelCost = Math.floor(game.panelCost * 1.15); // cost increases 15%
-                updateUI();
+        cancelBtn.addEventListener('click', () => {
+            loginForm.classList.add('hidden');
+            errorMsg.classList.add('hidden');
+            passwordInput.value = '';
+        });
+
+        function checkPassword() {
+            if (passwordInput.value === SECRET_PASSWORD) {
+                window.location.href = "game.html";
+            } else {
+                errorMsg.classList.remove('hidden');
+                passwordInput.value = '';
             }
-        });
-
-        buyInverterBtn.addEventListener('click', () => {
-            if (game.energy >= game.inverterCost) {
-                game.energy -= game.inverterCost;
-                game.inverters++;
-                game.inverterCost = Math.floor(game.inverterCost * 1.20);
-                updateUI();
-            }
-        });
-
-        buySmartBtn.addEventListener('click', () => {
-            if (game.energy >= game.smartCost) {
-                game.energy -= game.smartCost;
-                game.smartMeters++;
-                game.energyPerClick += 1;
-                game.smartCost = Math.floor(game.smartCost * 1.50);
-                updateUI();
-            }
-        });
-
-        // Helper Functions
-        function calculateEPS() {
-            return (game.panels * 1) + (game.inverters * 5);
         }
 
-        function updateUI() {
-            energyDisplay.innerText = Math.floor(game.energy);
-            epsDisplay.innerText = calculateEPS();
-            
-            panelCostDisplay.innerText = game.panelCost + " Wh";
-            panelCountDisplay.innerText = game.panels;
-            buyPanelBtn.disabled = game.energy < game.panelCost;
-
-            inverterCostDisplay.innerText = game.inverterCost + " Wh";
-            inverterCountDisplay.innerText = game.inverters;
-            buyInverterBtn.disabled = game.energy < game.inverterCost;
-
-            smartCostDisplay.innerText = game.smartCost + " Wh";
-            smartCountDisplay.innerText = game.smartMeters;
-            buySmartBtn.disabled = game.energy < game.smartCost;
-            
-            clickBtn.innerText = `Sonne einfangen (+${game.energyPerClick} Wh)`;
-        }
-
-        // Save & Load Functions (Local Storage)
-        function saveGame() {
-            localStorage.setItem('balkonkraftwerkSave', JSON.stringify(game));
-        }
-
-        function loadGame() {
-            let savedGame = localStorage.getItem('balkonkraftwerkSave');
-            if (savedGame) {
-                game = JSON.parse(savedGame);
-            }
-            updateUI();
-        }
-
-        document.getElementById('save-btn').addEventListener('click', () => {
-            saveGame();
-            alert("Spiel manuell gespeichert!");
-        });
-
-        document.getElementById('reset-btn').addEventListener('click', () => {
-            if(confirm("Bist du sicher? Dein Fortschritt wird komplett gelöscht!")) {
-                localStorage.removeItem('balkonkraftwerkSave');
-                location.reload();
-            }
-        });
-
-        // Export & Import (Base64)
-        document.getElementById('export-btn').addEventListener('click', () => {
-            let saveString = btoa(JSON.stringify(game)); // Encode to Base64
-            saveCodeInput.value = saveString;
-            saveCodeInput.select();
-            document.execCommand('copy');
-            alert("Save-Code generiert und in die Zwischenablage kopiert!");
-        });
-
-        document.getElementById('import-btn').addEventListener('click', () => {
-            let code = saveCodeInput.value;
-            if (!code) {
-                alert("Bitte füge zuerst einen Code in das Feld ein.");
-                return;
-            }
-            try {
-                let decoded = atob(code);
-                game = JSON.parse(decoded);
-                saveGame();
-                updateUI();
-                alert("Spielstand erfolgreich geladen!");
-            } catch (e) {
-                alert("Fehlerhafter Code!");
-            }
+        submitBtn.addEventListener('click', checkPassword);
+        passwordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') checkPassword();
         });
     </script>
 </body>
 </html>
-
