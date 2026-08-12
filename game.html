@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Balkonkraftwerk Idle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8 font-sans">
+    
+    <div class="max-w-3xl mx-auto bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-xl relative">
+        
+        <!-- Zurück-Button -->
+        <a href="index.html" class="absolute top-4 left-4 text-sm text-slate-400 hover:text-white transition">
+            &larr; Zurück
+        </a>
+
+        <h1 class="text-3xl font-bold text-center mt-6 mb-2 text-emerald-400">Balkonkraftwerk Idle</h1>
+        <p class="text-center text-slate-400 mb-8 text-sm">Produziere Strom, automatisiere dein Setup und optimiere dein Smart Home.</p>
+
+        <!-- Main Game Area -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <!-- Clicker & Stats -->
+            <div class="space-y-6 text-center bg-slate-700/50 p-6 rounded-xl border border-slate-600">
+                <h2 class="text-xl font-semibold">Dein Ertrag</h2>
+                
+                <div class="text-5xl font-bold text-yellow-400 my-4">
+                    <span id="energy-display">0</span> <span class="text-2xl">Wh</span>
+                </div>
+                
+                <div class="text-sm text-slate-300">
+                    Produktion: <span id="eps-display" class="font-bold text-white">0</span> Wh/s
+                </div>
+
+                <button id="click-btn" class="mt-4 w-full py-4 bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold text-lg rounded-xl shadow-[0_4px_14px_0_rgba(234,179,8,0.39)] transition active:scale-95">
+                    Sonne einfangen (+1 Wh)
+                </button>
+            </div>
+
+            <!-- Upgrades -->
+            <div class="space-y-4">
+                <h2 class="text-xl font-semibold border-b border-slate-600 pb-2">Upgrades</h2>
+                
+                <!-- Upgrade 1 -->
+                <button id="buy-panel-btn" class="w-full flex justify-between items-center p-3 bg-slate-700 hover:bg-slate-600 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <div class="text-left">
+                        <div class="font-bold">Zusätzliches Panel</div>
+                        <div class="text-xs text-slate-300">+1 Wh/s</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-yellow-400 font-bold" id="panel-cost">15 Wh</div>
+                        <div class="text-xs text-slate-400">Besitz: <span id="panel-count">0</span></div>
+                    </div>
+                </button>
+
+                <!-- Upgrade 2 -->
+                <button id="buy-inverter-btn" class="w-full flex justify-between items-center p-3 bg-slate-700 hover:bg-slate-600 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <div class="text-left">
+                        <div class="font-bold">Wechselrichter-Tuning</div>
+                        <div class="text-xs text-slate-300">+5 Wh/s</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-yellow-400 font-bold" id="inverter-cost">100 Wh</div>
+                        <div class="text-xs text-slate-400">Besitz: <span id="inverter-count">0</span></div>
+                    </div>
+                </button>
+                
+                <!-- Upgrade 3 -->
+                <button id="buy-smart-btn" class="w-full flex justify-between items-center p-3 bg-slate-700 hover:bg-slate-600 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed">
+                    <div class="text-left">
+                        <div class="font-bold">Smart Meter Automation</div>
+                        <div class="text-xs text-slate-300">Macht Klicks stärker (+1 Wh/Klick)</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-yellow-400 font-bold" id="smart-cost">250 Wh</div>
+                        <div class="text-xs text-slate-400">Besitz: <span id="smart-count">0</span></div>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Save/Load/Export Menu -->
+        <div class="mt-8 pt-6 border-t border-slate-700">
+            <h3 class="text-sm font-semibold text-slate-400 mb-3">Speicherverwaltung</h3>
+            <div class="flex flex-wrap gap-2 mb-4">
+                <button id="save-btn" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-xs rounded transition">Manuell Speichern</button>
+                <button id="reset-btn" class="px-4 py-2 bg-red-900/50 hover:bg-red-800 text-red-200 text-xs rounded transition">Spielstand löschen</button>
+            </div>
+            
+            <div class="flex gap-2">
+                <input type="text" id="save-code" class="w-full bg-slate-900 border border-slate-700 text-xs p-2 rounded text-slate-300 font-mono" placeholder="Dein Save-Code erscheint hier...">
+                <button id="export-btn" class="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-xs rounded transition">Code kopieren</button>
+                <button id="import-btn" class="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-xs rounded transition">Code importieren</button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Game Logic -->
+    <script>
+        // Game State Variables
+        let game = {
+            energy: 0,
+            energyPerClick: 1,
+            panels: 0,
+            panelCost: 15,
+            inverters: 0,
+            inverterCost: 100,
+            smartMeters: 0,
+            smartCost: 250
+        };
+
+        // DOM Elements
+        const energyDisplay = document.getElementById('energy-display');
+        const epsDisplay = document.getElementById('eps-display');
+        const clickBtn = document.getElementById('click-btn');
+        
+        const buyPanelBtn = document.getElementById('buy-panel-btn');
+        const panelCostDisplay = document.getElementById('panel-cost');
+        const panelCountDisplay = document.getElementById('panel-count');
+        
+        const buyInverterBtn = document.getElementById('buy-inverter-btn');
+        const inverterCostDisplay = document.getElementById('inverter-cost');
+        const inverterCountDisplay = document.getElementById('inverter-count');
+
+        const buySmartBtn = document.getElementById('buy-smart-btn');
+        const smartCostDisplay = document.getElementById('smart-cost');
+        const smartCountDisplay = document.getElementById('smart-count');
+
+        const saveCodeInput = document.getElementById('save-code');
+
+        // Initial Load
+        loadGame();
+
+        // Game Loop (runs 10x a second for smooth UI)
+        setInterval(() => {
+            let eps = calculateEPS();
+            game.energy += eps / 10;
+            updateUI();
+        }, 100);
+
+        // Auto Save (every 10 seconds)
+        setInterval(saveGame, 10000);
+
+        // Click Action
+        clickBtn.addEventListener('click', () => {
+            game.energy += game.energyPerClick;
+            updateUI();
+        });
+
+        // Buying Logic
+        buyPanelBtn.addEventListener('click', () => {
+            if (game.energy >= game.panelCost) {
+                game.energy -= game.panelCost;
+                game.panels++;
+                game.panelCost = Math.floor(game.panelCost * 1.15); // cost increases 15%
+                updateUI();
+            }
+        });
+
+        buyInverterBtn.addEventListener('click', () => {
+            if (game.energy >= game.inverterCost) {
+                game.energy -= game.inverterCost;
+                game.inverters++;
+                game.inverterCost = Math.floor(game.inverterCost * 1.20);
+                updateUI();
+            }
+        });
+
+        buySmartBtn.addEventListener('click', () => {
+            if (game.energy >= game.smartCost) {
+                game.energy -= game.smartCost;
+                game.smartMeters++;
+                game.energyPerClick += 1;
+                game.smartCost = Math.floor(game.smartCost * 1.50);
+                updateUI();
+            }
+        });
+
+        // Helper Functions
+        function calculateEPS() {
+            return (game.panels * 1) + (game.inverters * 5);
+        }
+
+        function updateUI() {
+            energyDisplay.innerText = Math.floor(game.energy);
+            epsDisplay.innerText = calculateEPS();
+            
+            panelCostDisplay.innerText = game.panelCost + " Wh";
+            panelCountDisplay.innerText = game.panels;
+            buyPanelBtn.disabled = game.energy < game.panelCost;
+
+            inverterCostDisplay.innerText = game.inverterCost + " Wh";
+            inverterCountDisplay.innerText = game.inverters;
+            buyInverterBtn.disabled = game.energy < game.inverterCost;
+
+            smartCostDisplay.innerText = game.smartCost + " Wh";
+            smartCountDisplay.innerText = game.smartMeters;
+            buySmartBtn.disabled = game.energy < game.smartCost;
+            
+            clickBtn.innerText = `Sonne einfangen (+${game.energyPerClick} Wh)`;
+        }
+
+        // Save & Load Functions (Local Storage)
+        function saveGame() {
+            localStorage.setItem('balkonkraftwerkSave', JSON.stringify(game));
+        }
+
+        function loadGame() {
+            let savedGame = localStorage.getItem('balkonkraftwerkSave');
+            if (savedGame) {
+                game = JSON.parse(savedGame);
+            }
+            updateUI();
+        }
+
+        document.getElementById('save-btn').addEventListener('click', () => {
+            saveGame();
+            alert("Spiel manuell gespeichert!");
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            if(confirm("Bist du sicher? Dein Fortschritt wird komplett gelöscht!")) {
+                localStorage.removeItem('balkonkraftwerkSave');
+                location.reload();
+            }
+        });
+
+        // Export & Import (Base64)
+        document.getElementById('export-btn').addEventListener('click', () => {
+            let saveString = btoa(JSON.stringify(game)); // Encode to Base64
+            saveCodeInput.value = saveString;
+            saveCodeInput.select();
+            document.execCommand('copy');
+            alert("Save-Code generiert und in die Zwischenablage kopiert!");
+        });
+
+        document.getElementById('import-btn').addEventListener('click', () => {
+            let code = saveCodeInput.value;
+            if (!code) {
+                alert("Bitte füge zuerst einen Code in das Feld ein.");
+                return;
+            }
+            try {
+                let decoded = atob(code);
+                game = JSON.parse(decoded);
+                saveGame();
+                updateUI();
+                alert("Spielstand erfolgreich geladen!");
+            } catch (e) {
+                alert("Fehlerhafter Code!");
+            }
+        });
+    </script>
+</body>
+</html>
+
