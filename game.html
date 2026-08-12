@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Energy Grid Tycoon</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
+<style>
         @keyframes pulse-glow {
             0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.8)); }
             50% { transform: scale(1.1); filter: drop-shadow(0 0 25px rgba(250, 204, 21, 1)); }
@@ -17,6 +17,24 @@
             animation: pulse-glow 1.5s infinite;
             transition: top 0.5s ease-out, left 0.5s ease-out;
         }
+        
+        /* --- NEU: Animation für aufploppende Zahlen --- */
+        @keyframes float-up {
+            0% { opacity: 1; transform: translateY(0) scale(1); }
+            100% { opacity: 0; transform: translateY(-60px) scale(1.5); }
+        }
+        .floating-text {
+            position: fixed;
+            color: #facc15;
+            font-weight: 900;
+            font-size: 1.25rem;
+            pointer-events: none;
+            animation: float-up 0.8s ease-out forwards;
+            z-index: 100;
+            text-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+        }
+        /* ---------------------------------------------- */
+
         /* Custom Scrollbar for columns */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: #1e293b; }
@@ -25,15 +43,17 @@
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans overflow-x-hidden flex flex-col">
 
-    <!-- Header -->
+   <!-- Header -->
     <header class="bg-slate-800 border-b border-slate-700 p-4 flex justify-between items-center z-10 shadow-md">
         <a href="index.html" class="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white bg-slate-700/50 py-2 px-4 rounded-lg transition">
             &larr; Exit
         </a>
-        <h1 class="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">Energy Grid Tycoon</h1>
+        <h1 class="text-lg md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 hidden sm:block">Energy Grid Tycoon</h1>
         <div class="flex gap-2">
-            <button id="save-btn" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-xs rounded font-bold shadow transition">Save</button>
-            <button id="reset-btn" class="px-3 py-1.5 bg-red-900/60 hover:bg-red-800 text-xs text-red-200 rounded font-bold shadow transition border border-red-900">Wipe</button>
+            <button id="export-btn" class="px-2 md:px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs rounded font-bold shadow transition text-white">Export</button>
+            <button id="import-btn" class="px-2 md:px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-xs rounded font-bold shadow transition text-white">Import</button>
+            <button id="save-btn" class="px-2 md:px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-xs rounded font-bold shadow transition">Save</button>
+            <button id="reset-btn" class="px-2 md:px-3 py-1.5 bg-red-900/60 hover:bg-red-800 text-xs text-red-200 rounded font-bold shadow transition border border-red-900">Wipe</button>
         </div>
     </header>
 
@@ -351,16 +371,36 @@
             log.scrollTop = log.scrollHeight;
         }
 
-        /* --- INTERACTIONS --- */
+/* --- INTERACTIONS --- */
         document.getElementById('click-btn').addEventListener('click', (e) => {
             let clickVal = getClickPower();
             game.energy += clickVal;
             game.lifetimeEnergy += clickVal;
             
-            // Visual click feedback
+            // Visuelles Feedback (Button drückt sich rein)
             const btn = e.currentTarget;
             btn.style.transform = 'scale(0.95)';
             setTimeout(() => btn.style.transform = '', 100);
+
+            // --- NEU: Aufploppende Zahl generieren ---
+            let floater = document.createElement('div');
+            floater.className = 'floating-text';
+            floater.innerText = '+' + formatNumber(clickVal);
+            
+            // Startposition an der Maus, mit leichtem Zufalls-Versatz
+            let offsetX = (Math.random() - 0.5) * 50; // Streuung X-Achse
+            let offsetY = (Math.random() - 0.5) * 30; // Streuung Y-Achse
+            floater.style.left = (e.clientX + offsetX) + 'px';
+            floater.style.top = (e.clientY + offsetY) + 'px';
+            
+            document.body.appendChild(floater);
+            
+            // Zahl nach der Animation aus dem Speicher löschen
+            setTimeout(() => {
+                if (floater.parentNode) floater.parentNode.removeChild(floater);
+            }, 800);
+            // ------------------------------------------
+
             updateUI();
         });
 
@@ -483,7 +523,31 @@
                 location.reload();
             }
         });
+/* --- EXPORT & IMPORT --- */
+        document.getElementById('export-btn').addEventListener('click', () => {
+            let saveString = btoa(JSON.stringify(game)); // Wandelt Spielstand in Base64 um
+            navigator.clipboard.writeText(saveString).then(() => {
+                logEvent('Save-Code erfolgreich in die Zwischenablage kopiert!', 'good');
+                alert("Code kopiert! Du kannst ihn nun irgendwo einfügen (Strg+V).");
+            });
+        });
 
+        document.getElementById('import-btn').addEventListener('click', () => {
+            let code = prompt("Bitte füge hier deinen kopierten Save-Code ein:");
+            if (code) {
+                try {
+                    let decoded = atob(code);
+                    let parsed = JSON.parse(decoded);
+                    if (parsed && typeof parsed === 'object') {
+                        Object.assign(game, parsed); // Überschreibt aktuellen Stand
+                        saveGame();
+                        location.reload(); // Lädt das Spiel mit neuem Stand neu
+                    }
+                } catch (e) {
+                    alert("Der Code ist fehlerhaft oder unvollständig.");
+                }
+            }
+        });
         // Start
         init();
     </script>
