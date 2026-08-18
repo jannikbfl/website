@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kontakt – Jannik Biefel</title>
+    <meta name="description" content="Kontaktiere Jannik Biefel bei Fragen, Feedback oder Ideen zu den Hobbyprojekten und Minigames. Antwort in der Regel innerhalb von 24 Stunden.">
+    <meta property="og:title" content="Kontakt – Jannik Biefel">
+    <meta property="og:description" content="Kontaktiere Jannik Biefel bei Fragen, Feedback oder Ideen zu den Hobbyprojekten und Minigames.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://biefel.de/kontakt.html">
+    <meta property="og:image" content="https://biefel.de/assets/og-image.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="https://biefel.de/kontakt.html">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-20 md:pb-0">
+
+    <nav class="max-w-2xl mx-auto flex items-center justify-between py-4 px-4 text-sm text-slate-300">
+        <a href="index.html" class="font-bold text-white">Jannik Biefel</a>
+        <div class="flex gap-4">
+            <a href="index.html#minigames" class="hover:text-blue-400 transition">Minigames</a>
+            <a href="ueber-mich.html" class="hover:text-blue-400 transition">Über mich</a>
+            <a href="kontakt.html" class="hover:text-blue-400 transition">Kontakt</a>
+        </div>
+    </nav>
+
+    <nav aria-label="Breadcrumb" class="max-w-md mx-auto px-4 text-xs text-slate-500 mb-2">
+        <a href="index.html" class="hover:text-blue-400">Start</a> <span class="mx-1">/</span> <span class="text-slate-300">Kontakt</span>
+    </nav>
+
+    <main class="max-w-md mx-auto px-4 mt-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-8 shadow-xl space-y-6">
+            <div class="text-center">
+                <h1 class="text-2xl font-bold text-white">Kontakt</h1>
+                <p class="text-slate-400 text-sm mt-2">Frage, Feedback oder Idee für ein neues Minigame? Schreib mir.</p>
+                <p class="inline-block mt-3 text-xs font-semibold text-blue-400 bg-blue-500/10 border border-blue-500/30 rounded-full px-3 py-1">
+                    ⏱ Antwort innerhalb von 24 Stunden
+                </p>
+            </div>
+
+            <!-- Formular via FormSubmit, leitet nach Absenden auf danke.html weiter -->
+            <form action="https://formsubmit.co/jannik@biefel.de" method="POST" class="space-y-4 text-left">
+                <input type="hidden" name="_next" value="https://biefel.de/danke.html">
+                <input type="hidden" name="_subject" value="Neue Kontaktanfrage über biefel.de">
+                <input type="text" name="_honey" style="display:none">
+
+                <div>
+                    <label for="name" class="block text-xs font-semibold text-slate-400 mb-1">Name</label>
+                    <input type="text" id="name" name="name" required class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="email" class="block text-xs font-semibold text-slate-400 mb-1">E-Mail</label>
+                    <input type="email" id="email" name="email" required class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label for="message" class="block text-xs font-semibold text-slate-400 mb-1">Nachricht</label>
+                    <textarea id="message" name="message" rows="4" required class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500"></textarea>
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition duration-200 shadow-md">
+                    Nachricht senden
+                </button>
+            </form>
+
+            <!-- Standort / Anfahrt: Platzhalter, siehe Rückfrage im Chat zur Karte -->
+            <div class="pt-4 border-t border-slate-700/60 text-left">
+                <h2 class="text-sm font-bold text-white mb-2">Standort</h2>
+                <p class="text-slate-400 text-sm">Haan, Nordrhein-Westfalen</p>
+                <p class="text-slate-500 text-xs mt-1">Genaue Karte &amp; Anfahrt folgen – siehe Rückfrage.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="max-w-2xl mx-auto px-4 py-10 text-center text-xs text-slate-500">
+        &copy; biefel.de · <a href="impressum.html" class="hover:text-blue-400">Impressum</a> · <a href="datenschutz.html" class="hover:text-blue-400">Datenschutz</a>
+    </footer>
+
+    <a href="mailto:jannik@biefel.de" class="md:hidden fixed bottom-0 inset-x-0 z-20 flex items-center justify-center gap-2 py-3 bg-blue-600 text-white text-sm font-semibold shadow-[0_-4px_12px_rgba(0,0,0,0.3)]">
+        ✉️ Direkt E-Mail schreiben
+    </a>
+
+</body>
+</html>

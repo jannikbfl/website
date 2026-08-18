@@ -3,96 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Jannik Biefel</title>
+    <title>Jannik Biefel – Hardware-Hobbyprojekte & Minigames</title>
+    <meta name="description" content="Hobbyprojekte von Jannik Biefel rund um Hardware-Entwicklung, Embedded Systems und kostenlose Browser-Minigames wie Energy Grid Tycoon.">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Jannik Biefel – Hardware-Hobbyprojekte & Minigames">
+    <meta property="og:description" content="Kostenlose Browser-Minigames und Hardware-Hobbyprojekte von Jannik Biefel.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://biefel.de/">
+    <meta property="og:image" content="https://biefel.de/assets/og-image.png">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Jannik Biefel – Hardware-Hobbyprojekte & Minigames">
+    <meta name="twitter:description" content="Kostenlose Browser-Minigames und Hardware-Hobbyprojekte von Jannik Biefel.">
+    <meta name="twitter:image" content="https://biefel.de/assets/og-image.png">
+    <!-- Dummy-Bild liegt unter /assets/og-image.png, bitte bei echtem Deploy durch finales Motiv ersetzen -->
+
+    <link rel="canonical" href="https://biefel.de/">
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      "name": "Jannik Biefel",
+      "url": "https://biefel.de/",
+      "email": "jannik@biefel.de",
+      "telephone": "+4915788690876",
+      "description": "Hobbyprojekt rund um Hardware-Entwicklung und kostenlose Browser-Minigames.",
+      "address": {
+        "@type": "PostalAddress",
+        "streetAddress": "Dieker Straße 94",
+        "postalCode": "42781",
+        "addressLocality": "Haan",
+        "addressCountry": "DE"
+      },
+      "priceRange": "Kostenlos"
+    }
+    </script>
 </head>
-<body class="bg-slate-900 text-slate-100 min-h-screen flex items-center justify-center p-4 font-sans">
-    <main class="max-w-md w-full bg-slate-800 border border-slate-700 rounded-2xl p-8 text-center shadow-xl space-y-6 relative overflow-hidden">
-        
-        <!-- Header / Profil -->
-        <div>
-            <div class="w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-4xl font-bold mx-auto mb-4 text-white shadow-[0_0_20px_rgba(59,130,246,0.5)] border-4 border-slate-800">
-                JB
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-20 md:pb-0">
+
+    <!-- Nav -->
+    <nav class="max-w-2xl mx-auto flex items-center justify-between py-4 px-4 text-sm text-slate-300">
+        <a href="index.html" class="font-bold text-white">Jannik Biefel</a>
+        <div class="flex gap-4">
+            <a href="index.html#minigames" class="hover:text-blue-400 transition">Minigames</a>
+            <a href="ueber-mich.html" class="hover:text-blue-400 transition">Über mich</a>
+            <a href="kontakt.html" class="hover:text-blue-400 transition">Kontakt</a>
+        </div>
+    </nav>
+
+    <main class="max-w-2xl mx-auto px-4 space-y-16 mt-4">
+
+        <!-- Hero / above the fold -->
+        <section class="bg-slate-800 border border-slate-700 rounded-2xl p-8 text-center shadow-xl space-y-6">
+            <div>
+                <div class="w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-4xl font-bold mx-auto mb-4 text-white shadow-[0_0_20px_rgba(59,130,246,0.5)] border-4 border-slate-800">
+                    JB
+                </div>
+                <h1 class="text-3xl font-bold text-white tracking-tight">Jannik Biefel</h1>
+                <p class="text-blue-400 font-medium text-sm mt-1">Hardware Development & Engineering</p>
             </div>
-            <h1 class="text-3xl font-bold text-white tracking-tight">Jannik Biefel</h1>
-            <p class="text-blue-400 font-medium text-sm mt-1">Hardware Development & Engineering</p>
-        </div>
 
-        <!-- Kurze Info -->
-        <p class="text-slate-300 text-sm leading-relaxed">
-            Passion für Hardware, eingebettete Systeme & digitale Projekte.
-        </p>
+            <p class="text-slate-300 text-sm leading-relaxed">
+                Hobbyprojekt-Seite: Hardware, eingebettete Systeme &amp; kostenlose Browser-Minigames zum Ausprobieren.
+            </p>
 
-        <!-- Kontakt -->
-        <div class="pt-4 border-t border-slate-700/60 space-y-3">
-            <a href="mailto:jannik@biefel.de" class="flex items-center justify-center gap-2 w-full py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition duration-200 shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                E-Mail schreiben
-            </a>
-            
-            <!-- Under Construction Button (Login) -->
-            <button id="login-btn" class="flex items-center justify-center gap-2 w-full py-3 px-4 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/50 border-dashed rounded-xl text-sm font-semibold transition duration-200 shadow-md">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-                🚧 WIP: Under Construction
-            </button>
-        </div>
-
-        <!-- Verstecktes Passwort-Feld -->
-        <div id="login-form" class="hidden absolute inset-0 bg-slate-800/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 rounded-2xl z-10">
-            <h3 class="text-white font-bold mb-4">Entwickler-Zugang</h3>
-            <input type="password" id="password-input" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-center text-white mb-4 focus:outline-none focus:border-amber-500" placeholder="••••">
-            <div class="flex gap-2 w-full">
-                <button id="cancel-btn" class="flex-1 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition">Abbrechen</button>
-                <button id="submit-btn" class="flex-1 py-2 bg-amber-600 hover:bg-amber-500 text-slate-900 rounded-lg text-sm font-bold transition">Zugang</button>
+            <!-- Klare CTAs above the fold -->
+            <div class="flex flex-col sm:flex-row gap-3 pt-2">
+                <a href="#minigames" class="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition duration-200 shadow-md">
+                    🎮 Minigames entdecken
+                </a>
+                <a href="kontakt.html" class="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-slate-700 hover:bg-slate-600 text-slate-100 rounded-xl text-sm font-semibold transition duration-200 shadow-md">
+                    ✉️ Kontakt aufnehmen
+                </a>
             </div>
-            <p id="error-msg" class="text-red-400 text-xs mt-3 hidden">Falscher Code!</p>
-        </div>
+        </section>
 
-        <!-- Footer -->
-        <footer class="pt-4 text-xs text-slate-500">
-            &copy; biefel.de
-        </footer>
+        <!-- Minigames Shop -->
+        <section id="minigames" class="space-y-4">
+            <h2 class="text-xl font-bold text-white">Minigames</h2>
+            <p class="text-slate-400 text-sm">Alle Spiele sind komplett kostenlos – "Kaufen" öffnet direkt das Spiel.</p>
+
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4">
+                <img src="assets/energy-grid-tycoon-thumb.png" alt="Vorschaubild des Idle-Games Energy Grid Tycoon (Platzhalter)" class="w-full sm:w-32 h-32 object-cover rounded-xl border border-slate-700 shrink-0">
+                <div class="text-left flex-1">
+                    <h3 class="font-bold text-white">Energy Grid Tycoon</h3>
+                    <p class="text-slate-400 text-xs mt-1">Idle-Game: Balkon-Solarpanel zum automatisierten Stromnetz hochskalieren.</p>
+                    <p class="text-blue-400 text-xs font-semibold mt-2">Kostenlos</p>
+                </div>
+                <a href="game.html" class="shrink-0 w-full sm:w-auto text-center py-2 px-5 bg-amber-500 hover:bg-amber-400 text-slate-900 rounded-xl text-sm font-bold transition duration-200 shadow-md">
+                    Kaufen
+                </a>
+            </div>
+
+            <div class="bg-slate-800/50 border border-slate-700 border-dashed rounded-2xl p-6 text-left text-slate-500 text-sm">
+                Weitere Minigames folgen bald.
+            </div>
+        </section>
+
+        <!-- Kundenprojekte (bewusst leer, folgt später) -->
+        <section id="projekte" class="space-y-4"></section>
+
+        <!-- Bewertungen (bewusst leer, folgt später) -->
+        <section id="bewertungen" class="space-y-4"></section>
+
+        <!-- FAQ -->
+        <section class="space-y-4">
+            <h2 class="text-xl font-bold text-white">Häufig gestellte Fragen</h2>
+            <p class="text-slate-400 text-xs">Vorschläge unten – sag mir, wenn du andere Fragen/Antworten willst.</p>
+
+            <div class="space-y-3 text-left">
+                <details class="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                    <summary class="font-semibold text-white cursor-pointer">Sind die Minigames wirklich komplett kostenlos?</summary>
+                    <p class="text-slate-400 text-sm mt-2">Ja. Es handelt sich um ein Hobbyprojekt, kein kommerzielles Angebot – "Kaufen" ist nur die Bezeichnung für den Button, es entstehen keine Kosten.</p>
+                </details>
+                <details class="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                    <summary class="font-semibold text-white cursor-pointer">Muss ich mich registrieren, um zu spielen?</summary>
+                    <p class="text-slate-400 text-sm mt-2">Nein, es ist keine Registrierung nötig. Einfach auf "Kaufen" klicken und direkt loslegen.</p>
+                </details>
+                <details class="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                    <summary class="font-semibold text-white cursor-pointer">Werden meine Spielstände gespeichert?</summary>
+                    <p class="text-slate-400 text-sm mt-2">Ja, der Spielstand wird lokal in deinem Browser gespeichert (LocalStorage). Bei anderem Gerät oder gelöschten Browserdaten geht er verloren.</p>
+                </details>
+                <details class="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                    <summary class="font-semibold text-white cursor-pointer">Auf welchen Geräten funktionieren die Spiele?</summary>
+                    <p class="text-slate-400 text-sm mt-2">Alle Spiele laufen direkt im Browser, auf Desktop, Tablet und Smartphone.</p>
+                </details>
+                <details class="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                    <summary class="font-semibold text-white cursor-pointer">Kann ich Feedback oder Ideen für neue Spiele einreichen?</summary>
+                    <p class="text-slate-400 text-sm mt-2">Gerne! Schreib mir einfach über die <a href="kontakt.html" class="text-blue-400 hover:underline">Kontaktseite</a>.</p>
+                </details>
+            </div>
+        </section>
+
     </main>
 
-    <script>
-        const loginBtn = document.getElementById('login-btn');
-        const loginForm = document.getElementById('login-form');
-        const cancelBtn = document.getElementById('cancel-btn');
-        const submitBtn = document.getElementById('submit-btn');
-        const passwordInput = document.getElementById('password-input');
-        const errorMsg = document.getElementById('error-msg');
+    <footer class="max-w-2xl mx-auto px-4 py-10 text-center text-xs text-slate-500">
+        &copy; biefel.de · <a href="impressum.html" class="hover:text-blue-400">Impressum</a> · <a href="datenschutz.html" class="hover:text-blue-400">Datenschutz</a>
+    </footer>
 
-        // NEUES PASSWORT
-        const SECRET_PASSWORD = "4567"; 
+    <!-- Sticky mobile contact button -->
+    <a href="kontakt.html" class="md:hidden fixed bottom-0 inset-x-0 z-20 flex items-center justify-center gap-2 py-3 bg-blue-600 text-white text-sm font-semibold shadow-[0_-4px_12px_rgba(0,0,0,0.3)]">
+        ✉️ Kontakt aufnehmen
+    </a>
 
-        loginBtn.addEventListener('click', () => {
-            loginForm.classList.remove('hidden');
-            passwordInput.focus();
-        });
-
-        cancelBtn.addEventListener('click', () => {
-            loginForm.classList.add('hidden');
-            errorMsg.classList.add('hidden');
-            passwordInput.value = '';
-        });
-
-        function checkPassword() {
-            if (passwordInput.value === SECRET_PASSWORD) {
-                window.location.href = "game.html";
-            } else {
-                errorMsg.classList.remove('hidden');
-                passwordInput.value = '';
-            }
-        }
-
-        submitBtn.addEventListener('click', checkPassword);
-        passwordInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') checkPassword();
-        });
-    </script>
 </body>
 </html>
