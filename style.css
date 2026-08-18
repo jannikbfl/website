@@ -1,0 +1,137 @@
+/* ============================================================
+   Energy Grid Tycoon – style.css
+   Animationen, Ambient-Effekte und Custom-Scrollbars.
+   ============================================================ */
+
+/* --- Goldene Sonne (Minigame) --- */
+@keyframes pulse-glow {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.8)); }
+    50%      { transform: scale(1.1); filter: drop-shadow(0 0 25px rgba(250, 204, 21, 1)); }
+}
+
+.golden-sun {
+    position: fixed;
+    cursor: pointer;
+    z-index: 50;
+    animation: pulse-glow 1.5s infinite;
+    transition: top 0.5s ease-out, left 0.5s ease-out;
+}
+
+/* --- Aufploppende Klick-Zahlen --- */
+@keyframes float-up {
+    0%   { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(-60px) scale(1.5); }
+}
+
+.floating-text {
+    position: fixed;
+    color: #facc15;
+    font-weight: 900;
+    font-size: 1.25rem;
+    pointer-events: none;
+    animation: float-up 0.8s ease-out forwards;
+    z-index: 100;
+    text-shadow: 0 0 8px rgba(245, 158, 11, 0.8);
+}
+
+/* --- Meilenstein-Toasts --- */
+@keyframes toast-in {
+    0%   { opacity: 0; transform: translateY(-20px) scale(0.95); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes toast-out {
+    0%   { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-20px); }
+}
+
+.toast {
+    animation: toast-in 0.35s ease-out forwards;
+    pointer-events: none;
+}
+.toast.leaving {
+    animation: toast-out 0.4s ease-in forwards;
+}
+
+/* --- Tag/Nacht-Zyklus im Klickbereich (dezent, im Hintergrund) --- */
+@keyframes daynight {
+    0%   { background-position: 0% 100%;  opacity: 0.55; }  /* Nacht */
+    25%  { background-position: 0% 45%;   opacity: 0.85; }  /* Morgen */
+    50%  { background-position: 0% 0%;    opacity: 1;    }  /* Mittag */
+    75%  { background-position: 0% 45%;   opacity: 0.85; }  /* Abend */
+    100% { background-position: 0% 100%;  opacity: 0.55; }  /* Nacht */
+}
+
+.sky-ambient {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(to bottom,
+        rgba(56, 189, 248, 0.22) 0%,
+        rgba(251, 191, 36, 0.16) 35%,
+        rgba(129, 78, 216, 0.14) 70%,
+        rgba(15, 23, 42, 0) 100%);
+    background-size: 100% 300%;
+    animation: daynight 120s linear infinite;
+}
+
+/* Wandernde Sonnenscheibe – bewusst langsam und leise */
+@keyframes sun-arc {
+    0%   { transform: translate(-10%, 70%) scale(0.7); opacity: 0.15; }
+    50%  { transform: translate(50%, 5%)   scale(1);   opacity: 0.45; }
+    100% { transform: translate(110%, 70%) scale(0.7); opacity: 0.15; }
+}
+
+.sun-disc {
+    position: absolute;
+    top: 0; left: 0;
+    width: 70px; height: 70px;
+    border-radius: 9999px;
+    background: radial-gradient(circle, rgba(253, 224, 71, 0.9) 0%, rgba(251, 191, 36, 0) 70%);
+    animation: sun-arc 120s linear infinite;
+    pointer-events: none;
+}
+
+/* --- Netz-Schema: neu freigeschaltete Module blinken einmal auf --- */
+@keyframes node-appear {
+    0%   { opacity: 0; transform: scale(0.4); }
+    60%  { opacity: 1; transform: scale(1.15); }
+    100% { opacity: 1; transform: scale(1); }
+}
+.grid-node.is-new { animation: node-appear 0.6s ease-out; }
+
+/* Energiefluss entlang der Leitungen */
+@keyframes flow {
+    to { stroke-dashoffset: -24; }
+}
+.grid-line-active {
+    stroke-dasharray: 4 8;
+    animation: flow 1.2s linear infinite;
+}
+
+/* --- Custom Scrollbar --- */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #1e293b; }
+::-webkit-scrollbar-thumb { background: #475569; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* --- Fokus-Sichtbarkeit (Tastaturbedienung) --- */
+button:focus-visible,
+a:focus-visible {
+    outline: 2px solid #38bdf8;
+    outline-offset: 2px;
+}
+
+/* --- Reduzierte Bewegung respektieren --- */
+@media (prefers-reduced-motion: reduce) {
+    .golden-sun,
+    .floating-text,
+    .sky-ambient,
+    .sun-disc,
+    .grid-node.is-new,
+    .grid-line-active,
+    .toast {
+        animation: none !important;
+    }
+    .sky-ambient { opacity: 0.7; }
+    .sun-disc { opacity: 0.3; transform: translate(50%, 20%); }
+}
