@@ -52,6 +52,9 @@ const Engine = (function () {
     let sunBoostUntil = 0;
     let lastSunSpawn = 0;
     let activeBuffs = [];     // Sonnen-Buffs, laufen parallel zu Events
+    let saveDisabled = false; // wird beim Wipe gesetzt
+    let unloadHandler = null;
+    const timers = [];
     const listeners = {};
 
     /* --- Event-Bus zur UI --- */
@@ -743,6 +746,10 @@ const Engine = (function () {
        SAVE / LOAD
        ------------------------------------------------------------ */
     function save() {
+        // Nach einem Wipe darf nichts mehr geschrieben werden – sonst
+        // stellt der beforeunload-Handler beim Reload den geloeschten
+        // Stand sofort wieder her.
+        if (saveDisabled) return false;
         state.lastSeen = Date.now();
         try {
             localStorage.setItem(SAVE_KEY, JSON.stringify({ v: SAVE_VERSION, state: state }));
@@ -817,8 +824,26 @@ const Engine = (function () {
         }
     }
 
+    /**
+     * Loescht den Spielstand endgueltig. Reihenfolge ist wichtig:
+     * erst alle Schreibwege abschalten, dann loeschen. Sonst
+     * ueberschreibt ein Autosave oder der beforeunload-Handler des
+     * folgenden Reloads den geloeschten Stand wieder.
+     */
     function wipe() {
-        localStorage.removeItem(SAVE_KEY);
+        saveDisabled = true;
+        timers.forEach(id => clearInterval(id));
+        timers.length = 0;
+        if (unloadHandler) {
+            window.removeEventListener('beforeunload', unloadHandler);
+            unloadHandler = null;
+        }
+        try {
+            localStorage.removeItem(SAVE_KEY);
+            return true;
+        } catch (e) {
+            return false;
+        }
     }
 
     /* ------------------------------------------------------------
@@ -851,13 +876,15 @@ const Engine = (function () {
 
         const offline = applyOfflineProgress();
 
-        setInterval(tick, CONFIG.tickRate);
-        setInterval(save, CONFIG.autosaveInterval);
-        setInterval(eventLoop, 1000);
-        setInterval(sunLoop, 1000);
-        setInterval(checkHints, 2000);
-        setInterval(maybeKiComment, 45000);
-        window.addEventListener('beforeunload', save);
+        timers.push(setInterval(tick, CONFIG.tickRate));
+        timers.push(setInterval(save, CONFIG.autosaveInterval));
+        timers.push(setInterval(eventLoop, 1000));
+        timers.push(setInterval(sunLoop, 1000));
+        timers.push(setInterval(checkHints, 2000));
+        timers.push(setInterval(maybeKiComment, 45000));
+
+        unloadHandler = save;
+        window.addEventListener('beforeunload', unloadHandler);
 
         checkHints();
         return { offline: offline };

@@ -678,10 +678,14 @@ const UI = (function () {
         });
 
         $('reset-btn').addEventListener('click', () => {
-            if (confirm('ACHTUNG! Dies loescht den gesamten Spielstand inkl. Forschungspunkten und Dyson-Kernen unwiderruflich! Sicher?')) {
-                Engine.wipe();
-                location.reload();
+            if (!confirm('ACHTUNG! Dies loescht den gesamten Spielstand inkl. Forschungspunkten, Sonnenfragmenten und Dyson-Kernen unwiderruflich! Sicher?')) return;
+            const ok = Engine.wipe();
+            if (!ok) {
+                alert('Der Spielstand konnte nicht geloescht werden. Moeglicherweise blockiert dein Browser den lokalen Speicher.');
+                return;
             }
+            // Cache-Buster, damit der Reload garantiert frisch startet
+            window.location.replace(window.location.pathname + '?wiped=' + Date.now());
         });
 
         $('export-btn').addEventListener('click', () => {
