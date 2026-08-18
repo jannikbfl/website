@@ -31,61 +31,61 @@ const BUILDINGS_DB = [
     {
         id: 'panel', name: 'Balkon-Panel', icon: ICONS.panel,
         desc: 'Grundlegendes Solar-Panel fuer den Balkon.',
-        baseCost: 15, baseProd: 1, costFactor: 1.12, era: 0,
+        baseCost: 60, baseProd: 1, costFactor: 1.14, era: 0,
         flavor: 'Zwei Schrauben, ein Kabel, viel Hoffnung.'
     },
     {
         id: 'inverter', name: 'Wechselrichter', icon: ICONS.inverter,
         desc: 'Verbessert die Einspeisung ins Heimnetz.',
-        baseCost: 150, baseProd: 8, costFactor: 1.13, era: 0,
+        baseCost: 1416, baseProd: 8, costFactor: 1.14, era: 0,
         flavor: 'Gleichstrom rein, Wechselstrom raus. Endlich zaehlt der Zaehler rueckwaerts.'
     },
     {
         id: 'smartmeter', name: 'Smart Meter API', icon: ICONS.smartmeter,
         desc: 'Automatisierte Auslesung & Last-Verteilung.',
-        baseCost: 1800, baseProd: 60, costFactor: 1.14, era: 1,
+        baseCost: 31329, baseProd: 60, costFactor: 1.15, era: 1,
         flavor: 'Der Zaehler spricht jetzt JSON. Der Netzbetreiber findet das mittelspannend.'
     },
     {
         id: 'battery', name: 'Heimspeicher-Rack', icon: ICONS.battery,
         desc: 'LiFePO4 Speicher puffert die Produktion.',
-        baseCost: 24000, baseProd: 500, costFactor: 1.15, era: 1,
+        baseCost: 770171, baseProd: 500, costFactor: 1.15, era: 1,
         flavor: 'Sonne von mittags, Kaffee um Mitternacht.'
     },
     {
         id: 'fpga', name: 'FPGA Grid-Steuerung', icon: ICONS.fpga,
         desc: 'Hardware-nahe Echtzeit-Steuerung des Netzes.',
-        baseCost: 350000, baseProd: 4500, costFactor: 1.16, era: 2,
+        baseCost: 20448047, baseProd: 4500, costFactor: 1.15, era: 2,
         flavor: 'Ab hier reagiert das Netz schneller, als du blinzeln kannst.'
     },
     {
         id: 'riscv', name: 'RISC-V Coprozessor', icon: ICONS.riscv,
         desc: 'KI-gestuetzte Vorhersage der Sonnenzyklen.',
-        baseCost: 5000000, baseProd: 40000, costFactor: 1.17, era: 2,
+        baseCost: 536193224, baseProd: 40000, costFactor: 1.16, era: 2,
         flavor: 'Offene Architektur, geschlossener Regelkreis.'
     },
     {
         id: 'trading', name: 'Python Stromhandel', icon: ICONS.trading,
         desc: 'Automatisierter Hochfrequenzhandel an der Stromboerse.',
-        baseCost: 75000000, baseProd: 350000, costFactor: 1.18, era: 3,
+        baseCost: 13840487601, baseProd: 350000, costFactor: 1.16, era: 3,
         flavor: 'Der Bot kauft nachts billig und verkauft mittags teuer. Du schlaefst.'
     },
     {
         id: 'vpp', name: 'Virtuelles Kraftwerk', icon: ICONS.vpp,
         desc: 'Buendelt tausende Heimspeicher zu einem Schwarm.',
-        baseCost: 1200000000, baseProd: 2800000, costFactor: 1.19, era: 3,
+        baseCost: 326635507382, baseProd: 2800000, costFactor: 1.16, era: 3,
         flavor: 'Kein einziges Kraftwerk gebaut – und trotzdem eins.'
     },
     {
         id: 'fusion', name: 'Fusions-Testreaktor', icon: ICONS.fusion,
         desc: 'Experimenteller Reaktor im ehemaligen Gartenhaus.',
-        baseCost: 20000000000, baseProd: 24000000, costFactor: 1.20, era: 4,
+        baseCost: 8259212115243, baseProd: 24000000, costFactor: 1.17, era: 4,
         flavor: 'Die Baugenehmigung war ueberraschend unkompliziert.'
     },
     {
         id: 'dyson', name: 'Dyson-Schwarm', icon: ICONS.dyson,
         desc: 'Satelliten-Netzwerk im Sonnenorbit.',
-        baseCost: 400000000000, baseProd: 210000000, costFactor: 1.22, era: 5,
+        baseCost: 213190912724712, baseProd: 210000000, costFactor: 1.17, era: 5,
         flavor: 'Es fing mit einem Balkon-Panel an.'
     }
 ];
@@ -148,42 +148,210 @@ const META_SKILLS_DB = [
 ];
 
 /* ------------------------------------------------------------
+   SONNEN-TYPEN
+   Die goldene Sonne ist von Anfang an dabei; die uebrigen
+   Varianten werden ueber den Solar-Zweig freigeschaltet.
+   weight = relative Spawn-Haeufigkeit innerhalb des Pools.
+   ------------------------------------------------------------ */
+const SUN_TYPES = [
+    {
+        id: 'golden', name: 'Goldene Sonne', weight: 100,
+        color: 'text-yellow-400', glow: 'rgba(250, 204, 21, 0.9)',
+        effect: 'instant',
+        desc: 'Sofortbonus in Hoehe mehrerer Sekunden Produktion.',
+        unlock: null
+    },
+    {
+        id: 'frenzy', name: 'Produktions-Rausch', weight: 32,
+        color: 'text-emerald-400', glow: 'rgba(52, 211, 153, 0.9)',
+        effect: 'buff', buffMult: 7, buffDuration: 30, buffKind: 'production',
+        desc: 'Siebenfache Produktion fuer 30 Sekunden.',
+        unlock: 'sun_variants'
+    },
+    {
+        id: 'clickstorm', name: 'Klick-Sturm', weight: 24,
+        color: 'text-cyan-300', glow: 'rgba(103, 232, 249, 0.9)',
+        effect: 'buff', buffMult: 100, buffDuration: 15, buffKind: 'click',
+        desc: 'Hundertfache Klick-Staerke fuer 15 Sekunden.',
+        unlock: 'sun_variants'
+    },
+    {
+        id: 'shardrain', name: 'Fragment-Regen', weight: 18,
+        color: 'text-fuchsia-400', glow: 'rgba(232, 121, 249, 0.9)',
+        effect: 'shards', shardMult: 6,
+        desc: 'Schuettet ein Vielfaches an Sonnenfragmenten aus.',
+        unlock: 'sun_variants'
+    },
+    {
+        id: 'surge', name: 'Netz-Ueberladung', weight: 14,
+        color: 'text-orange-400', glow: 'rgba(251, 146, 60, 0.9)',
+        effect: 'buff', buffMult: 1, buffDuration: 45, buffKind: 'discount', discount: 0.30,
+        desc: '30% Rabatt auf Hardware fuer 45 Sekunden.',
+        unlock: 'sun_surge'
+    },
+    {
+        id: 'eclipse', name: 'Schwarze Sonne', weight: 6,
+        color: 'text-violet-400', glow: 'rgba(167, 139, 250, 0.95)',
+        effect: 'buff', buffMult: 25, buffDuration: 20, buffKind: 'production',
+        desc: 'Selten. 25-fache Produktion fuer 20 Sekunden.',
+        unlock: 'sun_eclipse'
+    }
+];
+
+/* ------------------------------------------------------------
+   SOLAR-ZWEIG – eigener Skilltree, bezahlt mit Sonnenfragmenten
+   (SF). Fragmente gibt es ausschliesslich fuers Fangen von
+   Sonnen, damit die Aktivitaet eine eigene Progression hat.
+   ------------------------------------------------------------ */
+const SUN_SKILLS_DB = [
+    {
+        id: 'sun_duration', name: 'Langzeit-Belichtung',
+        desc: 'Sonnen bleiben +4 s laenger sichtbar pro Level.',
+        costFactor: 1.6, baseCost: 2, maxLevel: 10
+    },
+    {
+        id: 'sun_radar', name: 'Sonnen-Radar',
+        desc: 'Deutlich hoehere Spawn-Chance pro Level.',
+        costFactor: 1.9, baseCost: 3, maxLevel: 12
+    },
+    {
+        id: 'sun_yield', name: 'Fragment-Ausbeute',
+        desc: '+1 Sonnenfragment pro gefangener Sonne und Level.',
+        costFactor: 2.1, baseCost: 4, maxLevel: 10
+    },
+    {
+        id: 'sun_variants', name: 'Spektral-Analyse',
+        desc: 'Schaltet Produktions-Rausch, Klick-Sturm und Fragment-Regen frei.',
+        costFactor: 1, baseCost: 15, maxLevel: 1
+    },
+    {
+        id: 'sun_chain', name: 'Ketten-Reaktion',
+        desc: '12% Chance pro Level, dass sofort eine weitere Sonne erscheint.',
+        costFactor: 2.4, baseCost: 8, maxLevel: 6
+    },
+    {
+        id: 'sun_surge', name: 'Lastspitzen-Kopplung',
+        desc: 'Schaltet die Netz-Ueberladung frei (Hardware-Rabatt).',
+        costFactor: 1, baseCost: 40, maxLevel: 1
+    },
+    {
+        id: 'sun_potency', name: 'Prismen-Fokus',
+        desc: '+20% Wirkung aller Sonnen-Buffs und Sofortboni pro Level.',
+        costFactor: 2.3, baseCost: 10, maxLevel: 12
+    },
+    {
+        id: 'sun_eclipse', name: 'Koronale Resonanz',
+        desc: 'Schaltet die Schwarze Sonne frei – selten, aber massiv.',
+        costFactor: 1, baseCost: 120, maxLevel: 1
+    },
+    {
+        id: 'sun_afterglow', name: 'Nachleuchten',
+        desc: 'Sonnen-Buffs laufen +15% laenger pro Level.',
+        costFactor: 2.2, baseCost: 12, maxLevel: 8
+    }
+];
+
+/* ------------------------------------------------------------
+   ONBOARDING-HINWEISE
+   Erscheinen kontextabhaengig genau einmal, sobald das jeweilige
+   System zum ersten Mal relevant wird. check(state) wird von der
+   Engine ausgewertet, gesehene Hinweise landen in state.seenHints.
+   ------------------------------------------------------------ */
+const HINTS = [
+    {
+        id: 'h_start', title: 'Fang hier an',
+        text: 'Klick auf die grosse Sonne, um Energie zu erzeugen. Alles andere baut darauf auf.',
+        check: () => true
+    },
+    {
+        id: 'h_first_buy', title: 'Erste Hardware',
+        text: 'Du hast genug fuer ein Balkon-Panel. Panels produzieren dauerhaft, auch ohne Klicken – kaufen ist fast immer besser als sparen.',
+        check: s => s.energy >= 15 && (s.buildings.panel || 0) === 0
+    },
+    {
+        id: 'h_passive', title: 'Wh/s ist die wichtigste Zahl',
+        text: 'Die gruene Anzeige zeigt deine Produktion pro Sekunde. Sie laeuft weiter, waehrend du nichts tust – und macht auch deine Klicks staerker.',
+        check: s => (s.buildings.panel || 0) >= 1
+    },
+    {
+        id: 'h_bulk', title: 'Mehrere auf einmal',
+        text: 'Ueber den Hardware-Spalten kannst du auf x10, x100 oder Max umschalten. Spart im spaeteren Spiel sehr viele Klicks.',
+        check: s => (s.buildings.panel || 0) >= 12
+    },
+    {
+        id: 'h_sun', title: 'Sonnenfragmente',
+        text: 'Jede gefangene Sonne gibt Fragmente (SF). Die gibt es nur so – und nur dafuer. Damit kaufst du den Solar-Zweig unten in der Forschung.',
+        check: s => s.stats.sunsCaught >= 1
+    },
+    {
+        id: 'h_sun_tree', title: 'Solar-Zweig lohnt sich frueh',
+        text: 'Langzeit-Belichtung und Sonnen-Radar sind guenstig und wirken sofort: laenger sichtbare und haeufigere Sonnen bedeuten mehr von allem.',
+        check: s => s.shards >= 2
+    },
+    {
+        id: 'h_prestige', title: 'Reboot lohnt sich',
+        text: 'Du kannst jetzt Forschungspunkte holen. Ein Reboot loescht Energie und Hardware – die Punkte bleiben dauerhaft und machen den naechsten Durchlauf deutlich schneller.',
+        check: (s, api) => api.pendingFP > 0 && s.prestigeCount === 0
+    },
+    {
+        id: 'h_skills', title: 'Forschung ausgeben',
+        text: 'Forschungspunkte liegen nur herum, wenn du sie nicht ausgibst. Netz-Effizienz wirkt auf alles, Offline-Produktion laesst dein Netz bei geschlossenem Tab weiterlaufen.',
+        check: s => s.prestigeTokens >= 1
+    },
+    {
+        id: 'h_variants', title: 'Nicht jede Sonne ist gleich',
+        text: 'Mit der Spektral-Analyse erscheinen neue Sonnen-Typen: Produktions-Rausch, Klick-Sturm und Fragment-Regen. Die Farbe verraet dir, was drin ist.',
+        check: s => s.shards >= 15 && (s.sunSkills.sun_variants || 0) === 0
+    },
+    {
+        id: 'h_critical', title: 'Kritischer Ausfall',
+        text: 'Bei einem Defekt oder Hackerangriff bricht deine Produktion ein. Haemmere auf den grossen Button, bis der rote Balken voll ist – dann laeuft alles wieder.',
+        check: (s, api) => !!(api.event && api.event.repairClicks)
+    },
+    {
+        id: 'h_meta', title: 'Zweite Ebene',
+        text: 'Dyson-Kerne setzen sogar deine Forschungspunkte zurueck – geben dafuer aber Boni, die jeden Reboot ueberdauern. Erst machen, wenn dir Forschung allein zu langsam wird.',
+        check: (s, api) => api.metaUnlocked && s.stats.metaEarned === 0
+    }
+];
+
+/* ------------------------------------------------------------
    AEREN – an die Anzahl der System-Reboots gekoppelt.
    Gibt dem Prestige einen erzaehlerischen Rahmen.
    ------------------------------------------------------------ */
 const ERAS = [
     {
-        level: 0, name: 'Balkon-Bastler',
+        level: 0, fpRequired: 0, name: 'Balkon-Bastler',
         subtitle: 'Ein Panel, ein Kabel, eine Idee.',
         story: 'Du haengst dein erstes Panel ans Balkongelaender. Der Hausverwalter hat nichts gesagt, also gilt das als Genehmigung.'
     },
     {
-        level: 1, name: 'Kleinunternehmer',
+        level: 1, fpRequired: 25, name: 'Kleinunternehmer',
         subtitle: 'Aus dem Hobby wird eine Rechnung.',
         story: 'Der erste Reboot hat dich Hardware gekostet, aber Wissen gebracht. Du meldest ein Kleingewerbe an – und der Nachbar fragt zum ersten Mal nach Preisen statt nach Beschwerdeformularen.'
     },
     {
-        level: 2, name: 'Regionaler Netzbetreiber',
+        level: 2, fpRequired: 150, name: 'Regionaler Netzbetreiber',
         subtitle: 'Die Strasse haengt an dir.',
         story: 'Vierzehn Haushalte, ein Speicherkeller, eine Steuerungssoftware, die du selbst geschrieben hast. Der Netzbetreiber lockt dich mit einem Kooperationsvertrag.'
     },
     {
-        level: 3, name: 'Netz-Architekt',
+        level: 3, fpRequired: 1000, name: 'Netz-Architekt',
         subtitle: 'Der Algorithmus handelt schneller als du denkst.',
         story: 'Deine Handelsbots bewegen Lasten zwischen Umspannwerken. Irgendwo in einem Rechenzentrum meldet sich eine Steuerungs-KI zum ersten Mal von selbst zu Wort.'
     },
     {
-        level: 4, name: 'Fusions-Pionier',
+        level: 4, fpRequired: 6000, name: 'Fusions-Pionier',
         subtitle: 'Das Gartenhaus ist jetzt ein Forschungsreaktor.',
         story: 'Was als Balkonprojekt begann, verbraucht inzwischen mehr Kuehlwasser als der lokale Schwimmverein. Niemand fragt mehr, ob das erlaubt ist.'
     },
     {
-        level: 5, name: 'Schwarm-Operator',
+        level: 5, fpRequired: 25000, name: 'Schwarm-Operator',
         subtitle: 'Die Sonne ist jetzt Infrastruktur.',
         story: 'Der erste Satellitenring steht. Von hier oben sieht dein alter Balkon aus wie ein Pixel – und produziert noch immer.'
     },
     {
-        level: 6, name: 'Stellarer Verwalter',
+        level: 6, fpRequired: 80000, name: 'Stellarer Verwalter',
         subtitle: 'Es gibt nichts mehr zu erweitern. Nur zu optimieren.',
         story: 'Der Schwarm ist geschlossen. Du verwaltest ein Energiesystem, das laenger laufen wird als du. Ein neuer Zyklus beginnt trotzdem.'
     }
@@ -362,6 +530,24 @@ const ACHIEVEMENTS = [
         check: s => (s.buildings.dyson || 0) >= 1
     },
     {
+        id: 'spectral', name: 'Spektral-Analyse',
+        desc: 'Schalte die Sonnen-Varianten frei.',
+        lore: 'Nicht jede Sonne ist gelb. Manche sind deutlich lukrativer.',
+        check: s => (s.sunSkills.sun_variants || 0) >= 1
+    },
+    {
+        id: 'eclipse_hunter', name: 'Schwarze Sonne',
+        desc: 'Fange eine Schwarze Sonne.',
+        lore: 'Sie erscheint selten und faerbt fuer zwanzig Sekunden alle Zahlen violett.',
+        check: s => (s.stats.sunTypesCaught.eclipse || 0) >= 1
+    },
+    {
+        id: 'shard_hoarder', name: 'Fragmentsammler',
+        desc: 'Sammle insgesamt 250 Sonnenfragmente.',
+        lore: 'Ein Glas voller eingefangenem Licht. Metaphorisch.',
+        check: s => s.stats.shardsEarned >= 250
+    },
+    {
         id: 'meta', name: 'Jenseits der Forschung',
         desc: 'Erhalte deinen ersten Dyson-Kern.',
         lore: 'Eine Waehrung, die selbst den Reboot ueberlebt. Du spielst jetzt ein anderes Spiel.',
@@ -376,21 +562,28 @@ const ACHIEVEMENTS = [
 const CONFIG = {
     tickRate: 100,                 // ms pro Game-Tick
     autosaveInterval: 10000,       // ms
-    fpDivisor: 50000,              // FP = sqrt(lifetime / fpDivisor)
-    metaUnlockFP: 250,             // ab so vielen je verdienten FP wird die 2. Ebene sichtbar
-    metaDivisor: 100,              // DK = sqrt(totalFPEarned / metaDivisor)
+    fpDivisor: 4000000,              // FP = sqrt(lifetime / fpDivisor)
+    metaUnlockFP: 10000,             // ab so vielen je verdienten FP wird die 2. Ebene sichtbar
+    metaDivisor: 400,              // DK = sqrt(totalFPEarned / metaDivisor)
     clickEpsShare: 0.05,           // Klick = 1 + 5% der EPS
     goldenSunBase: 60,             // Sekunden Produktion pro goldener Sonne
     goldenSunPerLevel: 30,         // + pro Golden-Grid-Level
     goldenSunMin: 100,             // Mindestbelohnung in Wh
-    goldenSunLifetime: 10000,      // ms bis Despawn
+    goldenSunLifetime: 10000,      // ms bis Despawn (Basis)
+    sunDurationPerLevel: 4000,     // + ms pro Langzeit-Belichtung-Level
+    sunRadarBonus: 0.0015,          // + Spawn-Chance pro Radar-Level
+    sunShardBase: 3,               // Fragmente pro Sonne (Basis)
+    sunChainChance: 0.12,          // Chance pro Ketten-Reaktion-Level
+    sunPotencyPerLevel: 0.20,      // + Wirkung pro Prismen-Fokus-Level
+    sunAfterglowPerLevel: 0.15,    // + Buff-Dauer pro Nachleuchten-Level
     offlineHoursPerLevel: 2,       // Stunden pro Offline-Skill-Level
     offlineRate: 0.5,              // 50% der normalen Produktion offline
     eventBaseChance: 0.02,         // pro Sekunde
     eventLuckBonus: 0.01,          // pro Luck-Level
     eventEraBonus: 0.004,          // pro Aera – gleicht Spielzeit aus
     sunBaseChance: 0.01,
-    sunLuckBonus: 0.005,
-    sunEraBonus: 0.002,
-    sunOfflineBoost: 0.02          // Bonus-Chance direkt nach langer Abwesenheit
+    sunLuckBonus: 0.0015,
+    sunEraBonus: 0.0005,
+    sunOfflineBoost: 0.01,         // Bonus-Chance direkt nach langer Abwesenheit
+    sunCooldownMs: 12000           // Mindestabstand zwischen zwei Sonnen
 };

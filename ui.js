@@ -58,17 +58,18 @@ const UI = (function () {
        RENDERING: GEBAEUDE
        ------------------------------------------------------------ */
     function renderBuildings() {
-        const era = Engine.state.prestigeCount;
         let html = '';
-        BUILDINGS_DB.forEach(b => {
+        BUILDINGS_DB.forEach((b, i) => {
             const owned = Engine.state.buildings[b.id] || 0;
-            // Gebaeude spaeterer Aeren erst andeuten, wenn sie in Reichweite sind
-            const locked = b.era > era + 1 && owned === 0;
+            const prevOwned = i === 0 ? 1 : (Engine.state.buildings[BUILDINGS_DB[i - 1].id] || 0);
+            // Sichtbar, sobald das vorherige Tier steht – nie an die Aera gekoppelt,
+            // sonst sieht man Hardware nicht, die man sich laengst leisten koennte.
+            const locked = owned === 0 && prevOwned === 0;
             if (locked) {
                 html +=
                     '<div class="w-full flex items-center gap-3 p-3 bg-slate-900/40 rounded-xl border border-slate-800 border-dashed opacity-60">' +
                     '<div class="h-8 w-8 text-slate-600">' + b.icon + '</div>' +
-                    '<div class="text-xs text-slate-600 font-mono">??? – gesperrt bis Aera ' + b.era + '</div></div>';
+                    '<div class="text-xs text-slate-600 font-mono">??? – erst ' + BUILDINGS_DB[i - 1].name + ' bauen</div></div>';
                 return;
             }
             html +=
@@ -249,10 +250,20 @@ const UI = (function () {
         $('fp-header-display').textContent = fmt(st.prestigeTokens);
         $('lifetime-energy-display').textContent = fmt(st.lifetimeEnergy);
 
-        // Aera
+        // Aera und Fortschritt zur naechsten
         const era = Engine.getEra();
         $('era-name').textContent = era.name;
         $('era-subtitle').textContent = era.subtitle;
+        const prog = Engine.getEraProgress();
+        const progBar = $('era-progress');
+        const progText = $('era-progress-text');
+        if (prog.next) {
+            progBar.style.width = prog.pct.toFixed(1) + '%';
+            progText.textContent = 'noch ' + fmt(prog.remaining) + ' FP bis ' + prog.next.name;
+        } else {
+            progBar.style.width = '100%';
+            progText.textContent = 'letzte Aera erreicht';
+        }
 
         // Event-Banner
         const alert = $('event-alert');
@@ -331,6 +342,20 @@ const UI = (function () {
             btn.disabled = maxed || st.metaTokens < cost;
         });
 
+        // Sonnenfragmente
+        $('shard-display').textContent = fmt(st.shards);
+        $('sf-header-display').textContent = fmt(st.shards);
+
+        // Solar-Buttons nur bei Aenderung neu bewerten (kein Re-Render pro Tick)
+        SUN_SKILLS_DB.forEach(s => {
+            const btn = $('sun-btn-' + s.id);
+            if (!btn) return;
+            const lvl = st.sunSkills[s.id] || 0;
+            const maxed = s.maxLevel && lvl >= s.maxLevel;
+            btn.disabled = maxed || st.shards < Engine.getSunSkillCost(s.id, lvl);
+        });
+
+        renderBuffs();
         renderBreakdown();
     }
 
@@ -347,23 +372,186 @@ const UI = (function () {
         setTimeout(() => el.remove(), 800);
     }
 
-    function spawnGoldenSun() {
-        if ($('golden-sun')) return;
+    /* ------------------------------------------------------------
+       ONBOARDING-HINWEISE
+       ------------------------------------------------------------ */
+    function showHint(hint) {
+        const box = $('hint-box');
+        if (!box) return;
+        $('hint-title').textContent = hint.title;
+        $('hint-text').textContent = hint.text;
+        box.classList.remove('hidden');
+        box.classList.add('flex');
+    }
+
+    function hideHint() {
+        const box = $('hint-box');
+        box.classList.add('hidden');
+        box.classList.remove('flex');
+    }
+
+    /* ------------------------------------------------------------
+       STATISTIKEN
+       ------------------------------------------------------------ */
+    function renderStats() {
+        const s = Engine.getStats();
+        const row = (label, value, accent) =>
+            '<div class="flex justify-between items-baseline py-1.5 border-b border-slate-800">' +
+            '<span class="text-[11px] text-slate-400">' + label + '</span>' +
+            '<span class="text-xs font-mono font-bold ' + (accent || 'text-white') + '">' + value + '</span></div>';
+
+        let html = '';
+
+        html += '<h4 class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-1 mb-1">Allgemein</h4>';
+        html += row('Spielzeit', Engine.formatDuration(s.playTimeMs));
+        html += row('Aktuelle Aera', s.era.name, 'text-cyan-300');
+        html += row('Erfolge', s.achievements + ' / ' + s.achievementsTotal, 'text-emerald-400');
+        html += row('Skill-Level gesamt', s.skillLevels);
+
+        html += '<h4 class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-4 mb-1">Produktion</h4>';
+        html += row('Gesamtenergie', fmt(s.lifetimeEnergy) + ' Wh', 'text-yellow-400');
+        html += row('Aktuelle Produktion', fmt(s.currentEPS) + ' Wh/s', 'text-emerald-400');
+        html += row('Bestwert Produktion', fmt(s.bestEPS) + ' Wh/s', 'text-emerald-400');
+        html += row('Hardware im Besitz', fmt(s.buildingsOwned));
+        html += row('Hardware je gekauft', fmt(s.buildingsBought));
+
+        html += '<h4 class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-4 mb-1">Handarbeit</h4>';
+        html += row('Klicks', fmt(s.clicks));
+        html += row('Davon erzeugt', fmt(s.energyClicked) + ' Wh');
+        html += row('Anteil an Gesamtenergie',
+            s.lifetimeEnergy > 0 ? ((s.energyClicked / s.lifetimeEnergy) * 100).toFixed(1) + ' %' : '0 %');
+
+        html += '<h4 class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-4 mb-1">Sonnen</h4>';
+        html += row('Gefangen gesamt', fmt(s.sunsCaught), 'text-yellow-300');
+        html += row('Fragmente verdient', fmt(s.shardsEarned), 'text-yellow-300');
+        s.sunRows.forEach(r => {
+            html += '<div class="flex justify-between items-baseline py-1 pl-3 border-b border-slate-800/60">' +
+                '<span class="text-[11px] ' + (r.unlocked ? r.color : 'text-slate-600') + '">● ' +
+                (r.unlocked ? r.name : 'noch gesperrt') + '</span>' +
+                '<span class="text-xs font-mono ' + (r.unlocked ? 'text-slate-300' : 'text-slate-600') + '">' + r.count + '</span></div>';
+        });
+
+        html += '<h4 class="text-[10px] uppercase tracking-widest text-slate-500 font-bold mt-4 mb-1">Prestige & Ereignisse</h4>';
+        html += row('System-Reboots', fmt(s.prestigeCount), 'text-purple-300');
+        html += row('Forschungspunkte verdient', fmt(s.totalFPEarned), 'text-purple-300');
+        html += row('Dyson-Kerne verdient', fmt(s.metaEarned), 'text-amber-300');
+        html += row('Events erlebt', fmt(s.eventsSeen));
+        html += row('Systeme repariert', fmt(s.repairs), 'text-red-300');
+
+        $('stats-container').innerHTML = html;
+    }
+
+    let sunCounter = 0;
+
+    function spawnGoldenSun(payload) {
+        const type = (payload && payload.type) || SUN_TYPES[0];
+        const lifetime = (payload && payload.lifetime) || CONFIG.goldenSunLifetime;
+
+        // Mehrere Sonnen gleichzeitig sind durch die Ketten-Reaktion moeglich
+        if (document.querySelectorAll('.golden-sun').length >= 3) return;
+
         const sun = document.createElement('button');
-        sun.id = 'golden-sun';
-        sun.className = 'golden-sun text-yellow-400 hover:text-yellow-200';
-        sun.setAttribute('aria-label', 'Goldene Sonne einfangen');
-        sun.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>';
-        sun.style.left = Math.random() * (window.innerWidth - 80) + 'px';
-        sun.style.top = Math.random() * (window.innerHeight - 80) + 'px';
+        sun.id = 'sun-' + (++sunCounter);
+        sun.className = 'golden-sun ' + type.color;
+        sun.style.setProperty('--sun-glow', type.glow);
+        sun.setAttribute('aria-label', type.name + ' einfangen');
+        sun.title = type.name + ' – ' + type.desc;
+        sun.innerHTML =
+            '<svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">' +
+            '<path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2.25m6.364.386l-1.591 1.591M21 12h-2.25m-.386 6.364l-1.591-1.591M12 18.75V21m-4.773-4.227l-1.591 1.591M5.25 12H3m4.227-4.773L5.636 5.636M15.75 12a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" /></svg>';
+        sun.style.left = Math.random() * Math.max(40, window.innerWidth - 90) + 'px';
+        sun.style.top = Math.random() * Math.max(40, window.innerHeight - 90) + 'px';
+
+        // Verbleibende Sichtdauer als schrumpfender Ring
+        const ring = document.createElement('span');
+        ring.className = 'sun-timer';
+        ring.style.animationDuration = lifetime + 'ms';
+        sun.appendChild(ring);
+
         sun.addEventListener('click', e => {
-            const reward = Engine.claimSun();
-            spawnFloater(e.clientX, e.clientY, '+' + fmt(reward));
+            const res = Engine.claimSun(type.id);
+            if (res.energy > 0) spawnFloater(e.clientX, e.clientY, '+' + fmt(res.energy));
+            else spawnFloater(e.clientX, e.clientY, res.type.name);
+            spawnFloater(e.clientX, e.clientY + 26, '+' + res.shards + ' SF');
             sun.remove();
+            renderSunSkills();
             updateAll();
         });
+
         document.body.appendChild(sun);
-        setTimeout(() => { if (sun.parentNode) sun.remove(); }, CONFIG.goldenSunLifetime);
+        setTimeout(() => { if (sun.parentNode) sun.remove(); }, lifetime);
+    }
+
+    /* ------------------------------------------------------------
+       SOLAR-ZWEIG
+       ------------------------------------------------------------ */
+    function renderSunSkills() {
+        const box = $('sun-skills-container');
+        if (!box) return;
+        let html = '';
+        SUN_SKILLS_DB.forEach(s => {
+            const lvl = Engine.state.sunSkills[s.id] || 0;
+            const maxed = s.maxLevel && lvl >= s.maxLevel;
+            const isUnlock = s.maxLevel === 1;
+            const cost = Engine.getSunSkillCost(s.id, lvl);
+            html +=
+                '<button id="sun-btn-' + s.id + '" class="w-full flex justify-between items-center p-3 rounded-xl transition border text-left disabled:opacity-40 disabled:cursor-not-allowed ' +
+                  (isUnlock ? 'bg-fuchsia-900/20 hover:bg-fuchsia-900/40 border-fuchsia-700/50' : 'bg-yellow-900/15 hover:bg-yellow-900/30 border-yellow-700/40') + '">' +
+                  '<div class="flex-1 min-w-0">' +
+                    '<div class="font-bold text-sm ' + (isUnlock ? 'text-fuchsia-300' : 'text-yellow-300') + '">' + s.name +
+                      (isUnlock
+                        ? (maxed ? ' <span class="text-[10px] bg-fuchsia-900 text-fuchsia-200 px-1.5 py-0.5 rounded ml-1">AKTIV</span>' : '')
+                        : ' <span class="text-[10px] bg-yellow-900 text-yellow-200 px-1.5 py-0.5 rounded ml-1">Lvl ' + lvl + '</span>') +
+                    '</div>' +
+                    '<div class="text-[10px] text-slate-400 leading-tight mt-1">' + s.desc + '</div>' +
+                  '</div>' +
+                  '<div class="text-right ml-2 px-2 py-1 rounded shrink-0 ' + (isUnlock ? 'bg-fuchsia-900/50' : 'bg-yellow-900/40') + '">' +
+                    '<div class="font-bold text-xs ' + (isUnlock ? 'text-fuchsia-300' : 'text-yellow-300') + '">' +
+                      (maxed ? 'MAX' : fmt(cost) + ' SF') + '</div>' +
+                  '</div>' +
+                '</button>';
+        });
+        box.innerHTML = html;
+
+        SUN_SKILLS_DB.forEach(s => {
+            const btn = $('sun-btn-' + s.id);
+            if (!btn) return;
+            const lvl = Engine.state.sunSkills[s.id] || 0;
+            const maxed = s.maxLevel && lvl >= s.maxLevel;
+            btn.disabled = maxed || Engine.state.shards < Engine.getSunSkillCost(s.id, lvl);
+            if (!maxed) btn.addEventListener('click', () => {
+                if (Engine.buySunSkill(s.id)) { renderSunSkills(); updateAll(); }
+            });
+        });
+
+        // Freigeschaltete Sonnen-Typen als Legende
+        const legend = $('sun-legend');
+        if (legend) {
+            const types = Engine.getUnlockedSunTypes();
+            legend.innerHTML = types.map(t =>
+                '<span class="inline-flex items-center gap-1 text-[10px] ' + t.color + ' bg-slate-900/60 border border-slate-700 rounded-full px-2 py-0.5" title="' + t.desc + '">● ' + t.name + '</span>'
+            ).join(' ');
+        }
+    }
+
+    /* ------------------------------------------------------------
+       AKTIVE BUFFS
+       ------------------------------------------------------------ */
+    function renderBuffs() {
+        const box = $('buff-bar');
+        if (!box) return;
+        const buffs = Engine.getActiveBuffs();
+        if (buffs.length === 0) { box.innerHTML = ''; box.classList.add('hidden'); return; }
+        box.classList.remove('hidden');
+        box.innerHTML = buffs.map(b => {
+            const label = b.kind === 'discount'
+                ? '-' + Math.round(b.discount * 100) + '% Kosten'
+                : 'x' + fmt(b.mult) + (b.kind === 'click' ? ' Klick' : ' Prod.');
+            return '<div class="flex items-center gap-1.5 bg-slate-900/80 border border-yellow-600/50 rounded-full px-2.5 py-1">' +
+                   '<span class="text-[10px] font-bold text-yellow-300">' + b.name + '</span>' +
+                   '<span class="text-[10px] text-slate-400">' + label + '</span>' +
+                   '<span class="text-[10px] font-mono text-slate-500">' + b.remaining + 's</span></div>';
+        }).join('');
     }
 
     /* ------------------------------------------------------------
@@ -460,9 +648,11 @@ const UI = (function () {
                 renderBuildings();
                 renderGrid();
                 updateAll();
-                showModal('Aera ' + res.era.level + ': ' + res.era.name,
-                    '<p class="text-slate-300 text-sm leading-relaxed">' + res.era.story + '</p>' +
-                    '<p class="text-purple-300 text-sm font-bold mt-4">+' + res.fp + ' Forschungspunkte</p>');
+                if (res.eraChanged) {
+                    showModal('Aera ' + res.era.level + ': ' + res.era.name,
+                        '<p class="text-slate-300 text-sm leading-relaxed">' + res.era.story + '</p>' +
+                        '<p class="text-purple-300 text-sm font-bold mt-4">+' + res.fp + ' Forschungspunkte</p>');
+                }
             }
         });
 
@@ -513,6 +703,25 @@ const UI = (function () {
             else alert('Der Code ist fehlerhaft oder unvollstaendig.');
         });
 
+        // Onboarding-Hinweise
+        $('hint-ok').addEventListener('click', hideHint);
+        $('hint-off').addEventListener('click', () => {
+            Engine.dismissAllHints();
+            hideHint();
+            log('Hinweise deaktiviert. Ueber die Statistik wieder einschaltbar.', 'neutral');
+        });
+
+        // Statistik-Panel
+        $('stats-toggle').addEventListener('click', () => {
+            renderStats();
+            $('stats-panel').classList.toggle('hidden');
+        });
+        $('stats-close').addEventListener('click', () => $('stats-panel').classList.add('hidden'));
+        $('hints-reset').addEventListener('click', () => {
+            Engine.resetHints();
+            log('Hinweise wieder aktiviert.', 'good');
+        });
+
         // Achievements-Panel
         $('achievements-toggle').addEventListener('click', () => {
             renderAchievements();
@@ -543,6 +752,8 @@ const UI = (function () {
             renderAchievements();
         });
         Engine.on('spawnsun', spawnGoldenSun);
+        Engine.on('buffs', renderBuffs);
+        Engine.on('hint', showHint);
         Engine.on('gridchange', renderGrid);
         Engine.on('era', () => { renderBuildings(); renderGrid(); });
     }
@@ -557,6 +768,7 @@ const UI = (function () {
         renderBuildings();
         renderSkills();
         renderMetaSkills();
+        renderSunSkills();
         renderGrid();
         renderAchievements();
         bindListeners();
