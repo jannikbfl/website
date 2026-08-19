@@ -11,6 +11,7 @@ const UI = (function () {
     let buyAmount = 1;            // 1 | 10 | 100 | 'max'
     let breakdownOpen = false;
     let renderedUnlocked = -1;    // wie viele Gebaeude beim letzten Render sichtbar waren
+    let renderedSceneStage = -1;  // welche Szenen-Stufe aktuell im DOM steht
     const knownNodes = {};        // fuer die "neu"-Animation im Netz-Schema
 
     const $ = id => document.getElementById(id);
@@ -53,6 +54,32 @@ const UI = (function () {
             el.classList.add('leaving');
             setTimeout(() => el.remove(), 400);
         }, 5000);
+    }
+
+    /* ------------------------------------------------------------
+       HINTERGRUND-SZENE
+       ------------------------------------------------------------ */
+    /** Wechselt die Illustration nur, wenn sich die Stufe wirklich
+     *  aendert – die SVG-Zeichnung ist zu teuer fuer jeden Tick. */
+    function updateScene() {
+        const el = $('scene-bg');
+        if (!el || typeof Scene === 'undefined') return;
+        const stage = Scene.stageIndexForFP(Engine.state.stats.totalFPEarned || 0);
+        if (stage === renderedSceneStage) return;
+        renderedSceneStage = stage;
+
+        if (!el.firstChild) {
+            el.innerHTML = Scene.build(stage);
+            return;
+        }
+        el.classList.add('is-fading');
+        setTimeout(() => {
+            el.innerHTML = Scene.build(stage);
+            // Reflow erzwingen, bevor die Klasse entfernt wird – sonst sieht
+            // der Browser nur den Endzustand (opacity:1) und blendet nicht ein.
+            void el.offsetHeight;
+            el.classList.remove('is-fading');
+        }, 350);
     }
 
     /* ------------------------------------------------------------
@@ -260,6 +287,7 @@ const UI = (function () {
         // Liste neu gebaut werden – sonst bleibt die ausgegraute Platzhalter-Zeile
         // stehen, bis die Seite neu geladen wird.
         if (countUnlocked() !== renderedUnlocked) renderBuildings();
+        updateScene();
 
         $('energy-display').textContent = fmt(st.energy);
         $('eps-display').textContent = fmt(Engine.getEPS());
