@@ -174,8 +174,8 @@
         </div>
 
         <!-- ---------- SPALTE 2: HARDWARE ---------- -->
-        <div id="panel-hardware" class="hidden lg:flex bg-slate-800 rounded-2xl border border-slate-700 flex-col shadow-xl overflow-hidden lg:max-h-[85vh]">
-            <div class="p-4 border-b border-slate-700 z-10 shadow-sm">
+        <div id="panel-hardware" class="hidden lg:flex bg-slate-800 rounded-2xl border border-slate-700 flex-col shadow-xl lg:overflow-hidden lg:max-h-[85vh]">
+            <div class="p-4 border-b border-slate-700 z-10 shadow-sm shrink-0">
                 <h2 class="text-lg font-bold text-white flex items-center gap-2 mb-3">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-cyan-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M2 5a2 2 0 012-2h12a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5zm3.293 1.293a1 1 0 011.414 0l3 3a1 1 0 010 1.414l-3 3a1 1 0 01-1.414-1.414L7.586 10 5.293 7.707a1 1 0 010-1.414zM11 12a1 1 0 100 2h3a1 1 0 100-2h-3z" clip-rule="evenodd" /></svg>
                     Hardware &amp; Infrastruktur
@@ -188,21 +188,24 @@
                     <button data-buy="max" class="flex-1 py-1.5 text-[11px] font-bold rounded-md transition bg-slate-700 text-slate-300 hover:bg-slate-600">Max</button>
                 </div>
             </div>
-            <div id="buildings-container" class="flex-1 overflow-y-auto p-4 space-y-3"></div>
+            <div id="buildings-container" class="flex-1 lg:overflow-y-auto p-4 space-y-3"></div>
         </div>
 
         <!-- ---------- SPALTE 3: FORSCHUNG & LOG ---------- -->
         <div id="panel-research" class="hidden lg:flex flex-col gap-4 md:gap-6 lg:max-h-[85vh]">
 
-            <div class="bg-slate-800 rounded-2xl border border-slate-700 flex flex-col shadow-xl flex-1 overflow-hidden">
-                <div class="p-4 border-b border-slate-700 z-10 flex justify-between items-center">
+            <div class="bg-slate-800 rounded-2xl border border-slate-700 flex flex-col shadow-xl flex-1 lg:overflow-hidden">
+                <div class="p-4 border-b border-slate-700 z-10 flex justify-between items-center shrink-0">
                     <h2 class="text-lg font-bold text-white flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-400" viewBox="0 0 20 20" fill="currentColor"><path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" /></svg>
                         Forschung
                     </h2>
                     <span class="text-xs bg-slate-700 px-2 py-1 rounded text-purple-300 font-bold"><span id="fp-header-display">0</span> FP</span>
                 </div>
-                <div id="skills-container" class="p-4 space-y-3 overflow-y-auto"></div>
+                <!-- Ein gemeinsamer Scrollbereich fuer alle drei Zweige.
+                     Auf Mobile scrollt stattdessen die Seite selbst. -->
+                <div class="flex-1 lg:overflow-y-auto">
+                <div id="skills-container" class="p-4 space-y-3"></div>
 
                 <!-- Solar-Zweig -->
                 <div class="px-4 pb-2">
@@ -218,6 +221,7 @@
                 <div class="px-4 pb-4">
                     <h3 class="text-[10px] uppercase tracking-widest text-amber-500 font-bold mb-2 pt-3 border-t border-slate-700">Dyson-Kerne</h3>
                     <div id="meta-skills-container" class="space-y-3"></div>
+                </div>
                 </div>
             </div>
 

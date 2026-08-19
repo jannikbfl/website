@@ -10,6 +10,7 @@ const UI = (function () {
     const fmt = Engine.formatNumber;
     let buyAmount = 1;            // 1 | 10 | 100 | 'max'
     let breakdownOpen = false;
+    let renderedUnlocked = -1;    // wie viele Gebaeude beim letzten Render sichtbar waren
     const knownNodes = {};        // fuer die "neu"-Animation im Netz-Schema
 
     const $ = id => document.getElementById(id);
@@ -57,7 +58,19 @@ const UI = (function () {
     /* ------------------------------------------------------------
        RENDERING: GEBAEUDE
        ------------------------------------------------------------ */
+    /** Wie viele Gebaeude sind aktuell sichtbar (nicht ausgegraut)? */
+    function countUnlocked() {
+        let n = 0;
+        BUILDINGS_DB.forEach((b, i) => {
+            const owned = Engine.state.buildings[b.id] || 0;
+            const prevOwned = i === 0 ? 1 : (Engine.state.buildings[BUILDINGS_DB[i - 1].id] || 0);
+            if (owned > 0 || prevOwned > 0) n++;
+        });
+        return n;
+    }
+
     function renderBuildings() {
+        renderedUnlocked = countUnlocked();
         let html = '';
         BUILDINGS_DB.forEach((b, i) => {
             const owned = Engine.state.buildings[b.id] || 0;
@@ -242,6 +255,11 @@ const UI = (function () {
     function updateAll() {
         const st = Engine.state;
         const ev = Engine.getCurrentEvent();
+
+        // Wurde durch den letzten Kauf ein neues Tier freigeschaltet, muss die
+        // Liste neu gebaut werden – sonst bleibt die ausgegraute Platzhalter-Zeile
+        // stehen, bis die Seite neu geladen wird.
+        if (countUnlocked() !== renderedUnlocked) renderBuildings();
 
         $('energy-display').textContent = fmt(st.energy);
         $('eps-display').textContent = fmt(Engine.getEPS());
@@ -564,7 +582,9 @@ const UI = (function () {
             if (!panel || !btn) return;
             const active = t === name;
             panel.classList.toggle('hidden', !active);
-            panel.classList.toggle('lg:flex', true);
+            // Ohne 'flex' waere das Panel auf Mobile display:block – dann greifen
+            // flex-col, flex-1 und gap nicht und die Spalte laesst sich nicht scrollen.
+            panel.classList.toggle('flex', active);
             btn.className = 'flex-1 py-2 text-xs font-bold rounded-lg transition ' +
                 (active ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-white');
         });
@@ -574,7 +594,11 @@ const UI = (function () {
         const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
         ['core', 'hardware', 'research'].forEach(t => {
             const panel = $('panel-' + t);
-            if (panel && isDesktop) panel.classList.remove('hidden');
+            if (!panel) return;
+            if (isDesktop) {
+                panel.classList.remove('hidden');
+                panel.classList.add('flex');
+            }
         });
         if (!isDesktop) setTab(currentTab);
     }
