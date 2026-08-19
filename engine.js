@@ -51,6 +51,7 @@ const Engine = (function () {
     let autoClickCarry = 0;
     let sunBoostUntil = 0;
     let lastSunSpawn = 0;
+    let lastTickAt = 0; // Echtzeit-Zeitstempel des letzten Ticks, fuer Delta-basierte Produktion
     let activeBuffs = [];     // Sonnen-Buffs, laufen parallel zu Events
     let saveDisabled = false; // wird beim Wipe gesetzt
     let unloadHandler = null;
@@ -696,12 +697,25 @@ const Engine = (function () {
        HAUPT-LOOP
        ------------------------------------------------------------ */
     function tick() {
-        const seconds = CONFIG.tickRate / 1000;
+        // Delta-basiert statt Tick-Anzahl-basiert: Browser drosseln
+        // setInterval in Hintergrund-Tabs (seltenere Aufrufe statt
+        // Stillstand), daher zaehlt die tatsaechlich vergangene Zeit,
+        // nicht die Anzahl der Tick-Aufrufe. So laeuft die Produktion
+        // auch weiter, wenn der Tab im Hintergrund ist.
+        const now = Date.now();
+        const rawElapsedMs = lastTickAt ? (now - lastTickAt) : CONFIG.tickRate;
+        lastTickAt = now;
+        // Vor negativen Werten (Systemuhr-Sprung) und absurden Ausreissern
+        // (Standby/Ruhezustand) schuetzen; echte lange Abwesenheiten laufen
+        // ueber applyOfflineProgress beim naechsten Laden.
+        const elapsedMs = Math.min(Math.max(rawElapsedMs, 0), CONFIG.tickMaxCatchUpMs);
+        const seconds = elapsedMs / 1000;
+
         pruneBuffs();
         const eps = getEPS();
         addEnergy(eps * seconds);
 
-        state.stats.playTimeMs += CONFIG.tickRate;
+        state.stats.playTimeMs += elapsedMs;
         if (eps > state.stats.bestEPS) state.stats.bestEPS = eps;
 
         // Auto-Klicker

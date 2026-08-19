@@ -561,6 +561,7 @@ const ACHIEVEMENTS = [
    ------------------------------------------------------------ */
 const CONFIG = {
     tickRate: 100,                 // ms pro Game-Tick
+    tickMaxCatchUpMs: 6 * 3600 * 1000, // max. Delta pro Tick (6h) als Schutz vor Ausreissern; laengere Pausen laufen ueber applyOfflineProgress
     autosaveInterval: 10000,       // ms
     fpDivisor: 4000000,              // FP = sqrt(lifetime / fpDivisor)
     metaUnlockFP: 10000,             // ab so vielen je verdienten FP wird die 2. Ebene sichtbar
