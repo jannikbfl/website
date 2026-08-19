@@ -358,51 +358,27 @@ const ERAS = [
 ];
 
 /* ------------------------------------------------------------
-   SZENEN-STUFEN – das gezeichnete Grundstueck hinter der
-   kWh-Anzeige. 20 Stufen, gekoppelt an totalFPEarned (dieselbe
-   Zahl, die auch die Aera bestimmt – setzt sich also bei einem
-   Dyson-Kern-Reset ebenfalls zurueck). Start: kleines, froehliches
-   Haus mit Wiese. Ende: hochkomplexe Fabrik, in der nur noch die
-   Dachsilhouette an das urspruengliche Haus erinnert.
-   Die fp-Schwellen sind bewusst an die ERAS-Schwellen angelehnt,
-   aber feiner unterteilt.
+   SZENE – das gezeichnete Grundstueck hinter der kWh-Anzeige.
+   Die 100 Ausbaustufen werden in scene.js per Formel berechnet
+   (nicht als Tabelle), gesteuert von zwei Faktoren:
+     - "Hardware": wie viel von jedem Gebaeude-Typ aktuell steht
+       (state.buildings) – setzt sich bei jedem Reboot zurueck,
+       weil die Gebaeude selbst zurueckgesetzt werden. Sorgt fuer
+       schnelle, kleinschrittige Aenderungen waehrend des Spielens.
+     - "Tech-Level": Aera + Dyson-Kerne – bestimmt, wie stark sich
+       dieselbe Hardware-Menge auswirkt (mit mehr Tech-Level wirkt
+       ein Reboot schneller wieder wie ein grosser Sprung).
+   Hier in data.js liegen nur die Himmel-Farbstuetzstellen (echte
+   Daten); die Interpolation dazwischen macht scene.js.
    ------------------------------------------------------------ */
-const SCENE_STAGES = [
-    { fp: 0, roof: 0, ground: 0, meadow: 100, heatPump: false, batt: 0, battScale: 1, trees: 2, stumps: 0, fence: false, crane: false, ext: 0, chim: 0, tank: 0, pipe: 0, smog: 0, cloud: 3, sky: 0 },
-    { fp: 10, roof: 1, ground: 0, meadow: 100, heatPump: false, batt: 0, battScale: 1, trees: 2, stumps: 0, fence: false, crane: false, ext: 0, chim: 0, tank: 0, pipe: 0, smog: 0, cloud: 3, sky: 0 },
-    { fp: 25, roof: 2, ground: 0, meadow: 100, heatPump: false, batt: 0, battScale: 1, trees: 2, stumps: 0, fence: false, crane: false, ext: 0, chim: 0, tank: 0, pipe: 0, smog: 0, cloud: 3, sky: 1 },
-    { fp: 50, roof: 3, ground: 0, meadow: 100, heatPump: true, batt: 0, battScale: 1, trees: 2, stumps: 0, fence: false, crane: false, ext: 0, chim: 0, tank: 0, pipe: 0, smog: 0, cloud: 3, sky: 1 },
-    { fp: 90, roof: 4, ground: 0, meadow: 95, heatPump: true, batt: 1, battScale: 1, trees: 2, stumps: 0, fence: false, crane: false, ext: 0, chim: 0, tank: 0, pipe: 0, smog: 0, cloud: 3, sky: 2 },
-    { fp: 150, roof: 5, ground: 2, meadow: 85, heatPump: true, batt: 1, battScale: 1, trees: 2, stumps: 0, fence: false, crane: false, ext: 0, chim: 0, tank: 0, pipe: 0, smog: 0, cloud: 3, sky: 2 },
-    { fp: 300, roof: 6, ground: 4, meadow: 70, heatPump: true, batt: 2, battScale: 1, trees: 2, stumps: 0, fence: false, crane: false, ext: 0, chim: 0, tank: 0, pipe: 0, smog: 0.03, cloud: 3, sky: 3 },
-    { fp: 550, roof: 6, ground: 7, meadow: 55, heatPump: true, batt: 2, battScale: 1, trees: 1, stumps: 1, fence: true, crane: false, ext: 0, chim: 0, tank: 0, pipe: 0, smog: 0.05, cloud: 2, sky: 3 },
-    { fp: 1000, roof: 6, ground: 10, meadow: 40, heatPump: true, batt: 3, battScale: 1, trees: 1, stumps: 1, fence: true, crane: false, ext: 0, chim: 0, tank: 0, pipe: 0, smog: 0.07, cloud: 2, sky: 4 },
-    { fp: 2000, roof: 6, ground: 13, meadow: 28, heatPump: true, batt: 3, battScale: 1, trees: 1, stumps: 1, fence: true, crane: true, ext: 0, chim: 0, tank: 0, pipe: 0, smog: 0.09, cloud: 2, sky: 4 },
-    { fp: 3500, roof: 6, ground: 15, meadow: 20, heatPump: true, batt: 4, battScale: 1, trees: 0, stumps: 2, fence: true, crane: true, ext: 20, chim: 1, tank: 0, pipe: 0, smog: 0.12, cloud: 2, sky: 5 },
-    { fp: 6000, roof: 6, ground: 16, meadow: 14, heatPump: true, batt: 4, battScale: 1, trees: 0, stumps: 2, fence: true, crane: true, ext: 40, chim: 2, tank: 1, pipe: 1, smog: 0.16, cloud: 1, sky: 5 },
-    { fp: 11000, roof: 6, ground: 17, meadow: 10, heatPump: true, batt: 5, battScale: 1.05, trees: 0, stumps: 1, fence: true, crane: true, ext: 55, chim: 2, tank: 1, pipe: 1, smog: 0.20, cloud: 1, sky: 6 },
-    { fp: 18000, roof: 6, ground: 18, meadow: 6, heatPump: true, batt: 5, battScale: 1.1, trees: 0, stumps: 0, fence: true, crane: false, ext: 70, chim: 3, tank: 2, pipe: 2, smog: 0.25, cloud: 1, sky: 6 },
-    { fp: 25000, roof: 6, ground: 18, meadow: 4, heatPump: true, batt: 6, battScale: 1.15, trees: 0, stumps: 0, fence: true, crane: false, ext: 82, chim: 3, tank: 2, pipe: 2, smog: 0.30, cloud: 1, sky: 7 },
-    { fp: 38000, roof: 6, ground: 19, meadow: 2, heatPump: true, batt: 6, battScale: 1.2, trees: 0, stumps: 0, fence: true, crane: false, ext: 92, chim: 4, tank: 3, pipe: 3, smog: 0.36, cloud: 0, sky: 7 },
-    { fp: 55000, roof: 6, ground: 20, meadow: 0, heatPump: true, batt: 7, battScale: 1.25, trees: 0, stumps: 0, fence: true, crane: false, ext: 100, chim: 4, tank: 3, pipe: 3, smog: 0.42, cloud: 0, sky: 8 },
-    { fp: 80000, roof: 6, ground: 20, meadow: 0, heatPump: true, batt: 7, battScale: 1.3, trees: 0, stumps: 0, fence: true, crane: false, ext: 108, chim: 5, tank: 4, pipe: 4, smog: 0.48, cloud: 0, sky: 8 },
-    { fp: 150000, roof: 6, ground: 20, meadow: 0, heatPump: true, batt: 8, battScale: 1.4, trees: 0, stumps: 0, fence: true, crane: false, ext: 114, chim: 5, tank: 4, pipe: 4, smog: 0.54, cloud: 0, sky: 9 },
-    { fp: 300000, roof: 6, ground: 20, meadow: 0, heatPump: true, batt: 8, battScale: 1.5, trees: 0, stumps: 0, fence: true, crane: false, ext: 120, chim: 6, tank: 5, pipe: 5, smog: 0.6, cloud: 0, sky: 9 }
-];
-
-/* Zehn Himmel-Farbpaare (top/bottom), von froehlich-sonnig bis
-   duesterer Industrie-Dunst. Index kommt aus SCENE_STAGES[i].sky. */
-const SCENE_SKY_COLORS = [
-    ['#7dd3fc', '#e0f2fe'],
-    ['#7dd3fc', '#dbeafe'],
-    ['#6fc4ee', '#d7e8f5'],
-    ['#8fb8d8', '#d8e3ea'],
-    ['#9fb3c8', '#d3dde3'],
-    ['#a8adb8', '#cfd2d6'],
-    ['#9c9488', '#c9c2b4'],
-    ['#8f8478', '#beb4a4'],
-    ['#7d7268', '#a89d8c'],
-    ['#5f574e', '#948a7a']
+const SCENE_SKY_KEYFRAMES = [
+    ['#7dd3fc', '#e6f4fe'],  // 0.00 – klarer, froehlicher Sommerhimmel
+    ['#6fc4ee', '#d7e8f5'],  // 0.15
+    ['#8fb8d8', '#d8e3ea'],  // 0.32 – erster Dunst
+    ['#a8adb8', '#cfd2d6'],  // 0.50
+    ['#9c9488', '#c9c2b4'],  // 0.65 – Industrie-Schleier, warmes Braun
+    ['#7d7268', '#a89d8c'],  // 0.82
+    ['#4f4740', '#7a6f60']   // 1.00 – dichter, duesterer Rauchhimmel
 ];
 
 /* ------------------------------------------------------------

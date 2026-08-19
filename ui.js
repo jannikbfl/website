@@ -64,7 +64,7 @@ const UI = (function () {
     function updateScene() {
         const el = $('scene-bg');
         if (!el || typeof Scene === 'undefined') return;
-        const stage = Scene.stageIndexForFP(Engine.state.stats.totalFPEarned || 0);
+        const stage = Scene.stageIndexForState(Engine.state.buildings, Engine.getEra().level, Engine.state.metaTokens);
         if (stage === renderedSceneStage) return;
         renderedSceneStage = stage;
 
