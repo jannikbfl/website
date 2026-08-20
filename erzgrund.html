@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Erzgrund – Farm- und Minenspiel von Jannik Biefel</title>
+    <meta name="description" content="Erzgrund: kostenloses Browser-Spiel. Holz schlagen, Erz abbauen, Gemüse anbauen, Maschinen aufstellen – und die alte Erzbahn wieder in Betrieb nehmen.">
+    <meta property="og:title" content="Erzgrund – kostenloses Farm- und Minenspiel">
+    <meta property="og:description" content="Vom Handbeil zur Erzbahn: farmen, graben, bauen. Kostenloses Browser-Spiel von Jannik Biefel.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://biefel.de/erzgrund.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="https://biefel.de/erzgrund.html">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="erzgrund.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans overflow-hidden flex flex-col">
+
+    <!-- ============ KOPFZEILE ============ -->
+    <header class="bg-slate-800 border-b border-slate-700 px-3 py-2 flex items-center gap-2 z-30 shadow-md shrink-0">
+        <a href="index.html" class="text-xs font-bold text-slate-400 hover:text-white bg-slate-700/50 py-2 px-3 rounded-lg transition shrink-0">
+            &larr; Exit
+        </a>
+        <h1 class="text-sm md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-lime-400 hidden sm:block shrink-0">
+            Erzgrund
+        </h1>
+
+        <div class="flex-1 flex items-center justify-end gap-2 md:gap-3 text-xs min-w-0">
+            <div class="hidden md:block text-slate-500 truncate" id="eg-place">Erzgrund-Tal</div>
+
+            <div class="flex items-center gap-1.5 bg-slate-900/60 rounded-lg px-2 py-1.5 border border-slate-700">
+                <span class="text-slate-400" id="eg-day">Tag 1</span>
+                <span class="font-mono font-bold text-sky-300" id="eg-clock">06:00</span>
+            </div>
+
+            <div class="flex items-center gap-2 bg-slate-900/60 rounded-lg px-2 py-1.5 border border-slate-700 w-24 md:w-36">
+                <span class="text-sm">💪</span>
+                <div class="eg-stamina flex-1"><div id="eg-stamina-bar" class="eg-stamina-fill"></div></div>
+                <span class="text-[10px] font-mono text-slate-400 w-6 text-right" id="eg-stamina-text">100</span>
+            </div>
+
+            <div class="flex items-center gap-1 bg-amber-900/30 border border-amber-700/50 rounded-lg px-2 py-1.5">
+                <span class="text-sm">🪙</span>
+                <span class="font-bold text-amber-300" id="eg-taler">0</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- ============ SPIELFELD ============ -->
+    <main class="flex-1 relative overflow-hidden" id="eg-stage">
+        <canvas id="eg-canvas" class="block w-full h-full"></canvas>
+
+        <!-- Werkzeuge -->
+        <div class="absolute top-2 left-2 text-[10px] md:text-xs bg-slate-900/70 border border-slate-700 rounded-lg px-2 py-1 text-slate-300 pointer-events-none" id="eg-tools"></div>
+
+        <!-- Meldungen -->
+        <div id="eg-log" class="absolute bottom-2 left-2 flex flex-col gap-1 pointer-events-none max-w-[70%]"></div>
+        <div id="eg-toasts" class="absolute top-2 right-2 flex flex-col gap-2 w-64 max-w-[75vw] z-20"></div>
+
+        <!-- Steuerkreuz und Aktion -->
+        <div id="eg-dpad" class="eg-dpad">
+            <button data-dir="up" aria-label="hoch">▲</button>
+            <div class="flex gap-8">
+                <button data-dir="left" aria-label="links">◀</button>
+                <button data-dir="right" aria-label="rechts">▶</button>
+            </div>
+            <button data-dir="down" aria-label="runter">▼</button>
+        </div>
+        <button id="eg-action" class="eg-action">E</button>
+    </main>
+
+    <!-- ============ LEISTE UNTEN ============ -->
+    <div class="bg-slate-800 border-t border-slate-700 px-2 py-2 flex items-center gap-2 z-30 shrink-0">
+        <div id="eg-seedbar" class="flex gap-1.5 flex-1 overflow-x-auto"></div>
+        <div class="flex gap-1.5 shrink-0">
+            <button id="eg-btn-inv" class="eg-tab">🎒<span class="hidden sm:inline"> Beutel</span></button>
+            <button id="eg-btn-goals" class="eg-tab">🎯<span class="hidden sm:inline"> Ziele</span></button>
+            <button id="eg-btn-help" class="eg-tab">❓</button>
+            <button id="eg-btn-options" class="eg-tab">⚙️</button>
+        </div>
+    </div>
+
+    <!-- ============ PANEL ============ -->
+    <div id="eg-panel" class="hidden fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 flex items-end sm:items-center justify-center p-0 sm:p-4">
+        <div class="bg-slate-800 border border-slate-700 sm:rounded-2xl rounded-t-2xl w-full sm:max-w-lg max-h-[80vh] flex flex-col shadow-2xl">
+            <div class="flex items-center justify-between p-4 border-b border-slate-700 shrink-0">
+                <h3 id="eg-panel-title" class="font-bold text-white"></h3>
+                <button id="eg-panel-close" class="text-slate-400 hover:text-white text-xl leading-none px-2">&times;</button>
+            </div>
+            <div id="eg-panel-body" class="p-4 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- ============ ABSPANN ============ -->
+    <div id="eg-ending" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gradient-to-b from-slate-800 to-slate-900 border border-amber-700/50 rounded-2xl p-6 max-w-lg w-full shadow-2xl max-h-[85vh] overflow-y-auto">
+            <div id="eg-ending-body"></div>
+            <button id="eg-ending-close" class="mt-6 w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-slate-900 rounded-xl text-sm font-bold transition">Weiterspielen</button>
+        </div>
+    </div>
+
+    <script src="numbers.js"></script>
+    <script src="erzgrund-data.js"></script>
+    <script src="erzgrund-engine.js"></script>
+    <script src="erzgrund-render.js"></script>
+    <script src="erzgrund-ui.js"></script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+/* ============================================================
+   Erzgrund - erzgrund.css
+   Nur was Tailwind-Klassen nicht sinnvoll abdecken: Spielfeld,
+   Steuerkreuz, Panel-Zeilen, Meldungen.
+   ============================================================ */
+
+#eg-canvas { image-rendering: pixelated; cursor: default; touch-action: none; }
+#eg-stage { background: #0b1220; }
+
+/* --- Ausdauer --- */
+.eg-stamina { height: 8px; background: #0f172a; border-radius: 999px; overflow: hidden; border: 1px solid #334155; }
+.eg-stamina-fill { height: 100%; width: 100%; background: #22c55e; transition: width .2s linear, background .3s; }
+.eg-stamina-fill.mid { background: #eab308; }
+.eg-stamina-fill.low { background: #ef4444; }
+
+/* --- Saatgut-Leiste --- */
+.eg-seed {
+    position: relative; display: flex; align-items: center; gap: 4px;
+    padding: 6px 10px 6px 8px; border-radius: 10px;
+    background: #0f172a; border: 1px solid #334155; color: #e2e8f0;
+    transition: background .15s, border-color .15s;
+}
+.eg-seed:hover { background: #1e293b; }
+.eg-seed.active { border-color: #facc15; background: #422006; }
+.eg-seed-key {
+    position: absolute; top: -6px; right: -4px;
+    font-size: 9px; background: #334155; color: #cbd5e1;
+    border-radius: 4px; padding: 0 3px;
+}
+
+.eg-tab {
+    padding: 8px 10px; border-radius: 10px; font-size: 12px; font-weight: 700;
+    background: #0f172a; border: 1px solid #334155; color: #cbd5e1;
+    transition: background .15s;
+}
+.eg-tab:hover { background: #1e293b; color: #fff; }
+
+/* --- Panel-Inhalte --- */
+.eg-sec {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+    color: #64748b; font-weight: 700; margin: 14px 0 6px;
+}
+.eg-sec:first-child { margin-top: 0; }
+
+.eg-row {
+    display: flex; gap: 8px; align-items: flex-start;
+    padding: 10px; margin-bottom: 6px;
+    background: #0f172a; border: 1px solid #1e293b; border-radius: 12px;
+}
+.eg-row.done { border-color: #14532d; background: #052e16; }
+
+.eg-ready {
+    display: flex; gap: 8px; align-items: center;
+    padding: 10px; margin-bottom: 8px;
+    background: #052e16; border: 1px solid #15803d; border-radius: 12px;
+}
+
+.eg-job { margin-bottom: 8px; }
+.eg-bar { height: 6px; background: #1e293b; border-radius: 999px; overflow: hidden; margin-top: 4px; }
+.eg-bar > div { height: 100%; background: #38bdf8; transition: width .3s linear; }
+
+.eg-btn {
+    align-self: center; white-space: nowrap;
+    padding: 7px 11px; border-radius: 10px; font-size: 12px; font-weight: 700;
+    background: #1e293b; border: 1px solid #334155; color: #e2e8f0;
+    transition: background .15s, transform .1s;
+}
+.eg-btn:hover { background: #334155; }
+.eg-btn:active { transform: scale(.96); }
+.eg-btn.primary { background: #ca8a04; border-color: #a16207; color: #1c1917; }
+.eg-btn.primary:hover { background: #eab308; }
+.eg-btn.danger { background: #7f1d1d; border-color: #991b1b; color: #fecaca; }
+
+.eg-empty { color: #64748b; font-size: 12px; padding: 16px 0; text-align: center; }
+
+.eg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
+.eg-cell {
+    background: #0f172a; border: 1px solid #1e293b; border-radius: 12px;
+    padding: 8px 6px; text-align: center; color: #cbd5e1;
+}
+.eg-cell.food { border-color: #15803d; cursor: pointer; }
+.eg-cell.food:hover { background: #052e16; }
+
+/* --- Meldungen --- */
+.eg-toast {
+    background: #1e293b; border: 1px solid #475569; border-radius: 12px;
+    padding: 10px 12px; color: #e2e8f0; box-shadow: 0 8px 24px rgba(0,0,0,.45);
+    animation: eg-in .3s ease-out;
+}
+.eg-toast.good { border-color: #15803d; }
+.eg-toast.bad { border-color: #b91c1c; }
+.eg-toast.hint { border-color: #a16207; background: #292014; }
+.eg-toast.out { opacity: 0; transform: translateX(20px); transition: opacity .4s, transform .4s; }
+@keyframes eg-in { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+
+.eg-logline {
+    background: rgba(15,23,42,.82); border-left: 3px solid #475569;
+    padding: 4px 8px; border-radius: 6px; font-size: 11px; color: #cbd5e1;
+    animation: eg-up .25s ease-out;
+}
+.eg-logline.good { border-left-color: #22c55e; color: #bbf7d0; }
+.eg-logline.bad { border-left-color: #ef4444; color: #fecaca; }
+.eg-logline.out { opacity: 0; transition: opacity .6s; }
+@keyframes eg-up { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* --- Touch-Steuerung --- */
+.eg-dpad {
+    position: absolute; left: 12px; bottom: 12px;
+    display: none; flex-direction: column; align-items: center; gap: 6px;
+    user-select: none; touch-action: none; z-index: 10;
+}
+.eg-dpad button, .eg-action {
+    background: rgba(15,23,42,.72); border: 1px solid #475569; color: #e2e8f0;
+    border-radius: 12px; font-size: 16px; font-weight: 700;
+    width: 52px; height: 52px; display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(2px);
+}
+.eg-dpad button:active, .eg-action:active { background: rgba(202,138,4,.75); color: #1c1917; }
+.eg-action {
+    position: absolute; right: 16px; bottom: 26px;
+    width: 76px; height: 76px; font-size: 22px; display: none;
+    border-color: #ca8a04; color: #fbbf24; z-index: 10;
+}
+
+/* Steuerkreuz nur auf Touch-Geraeten - am Desktop stoert es nur. */
+@media (hover: none), (max-width: 860px) {
+    .eg-dpad { display: flex; }
+    .eg-action { display: flex; }
+    #eg-log { max-width: 45%; bottom: 90px; }
+}

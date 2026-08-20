@@ -2,6 +2,9 @@
 
 **Stand:** August 2026 · **Live:** [biefel.de/game.html](https://biefel.de/game.html)
 
+Das zweite Spiel der Seite (Erzgrund) hat ein eigenes Dokument:
+[pflichtenheft-erzgrund.md](pflichtenheft-erzgrund.md). Geteilt wird nur numbers.js.
+
 Dieses Dokument beschreibt den *tatsächlichen* Stand des Spiels, nicht einen Plan.
 Wenn eine Zahl hier und im Code auseinanderlaufen, gilt der Code – und dieses
 Dokument gehört korrigiert.

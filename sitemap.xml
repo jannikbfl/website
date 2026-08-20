@@ -17,6 +17,10 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://biefel.de/erzgrund.html</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://biefel.de/impressum.html</loc>
     <priority>0.2</priority>
   </url>
