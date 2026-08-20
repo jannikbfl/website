@@ -59,6 +59,7 @@ const src = ['data.js', 'engine.js']
 const exportLine = `
     globalThis.Engine = Engine;
     globalThis.BUILDINGS_DB = BUILDINGS_DB;
+    globalThis.BUILDING_MILESTONES = BUILDING_MILESTONES;
     globalThis.SKILLS_DB = SKILLS_DB;
     globalThis.SUN_SKILLS_DB = SUN_SKILLS_DB;
     globalThis.META_SKILLS_DB = META_SKILLS_DB;
@@ -85,7 +86,11 @@ function bestBuildingBuy() {
         const owned = Engine.state.buildings[b.id] || 0;
         const cost = Engine.getBuildingCost(b.id, owned);
         if (cost > Engine.state.energy) return;
-        const ratio = b.baseProd / cost;
+        // Zuwachs statt Basiswert: der naechste Kauf kann eine Mengen-Schwelle
+        // reissen und damit die gesamte bisherige Stueckzahl mit hochziehen.
+        const before = owned * b.baseProd * Engine.getMilestoneMultiplier(b.id, owned);
+        const after = (owned + 1) * b.baseProd * Engine.getMilestoneMultiplier(b.id, owned + 1);
+        const ratio = (after - before) / cost;
         if (!best || ratio > best.ratio) best = { id: b.id, ratio, cost, name: b.name };
     });
     return best;

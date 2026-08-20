@@ -119,7 +119,15 @@ const UI = (function () {
                     '<div class="flex-1 min-w-0">' +
                       '<div class="font-bold text-white text-sm">' + b.name + '</div>' +
                       '<div class="text-[10px] text-slate-400 leading-tight">' + b.desc + '</div>' +
-                      '<div class="text-xs text-cyan-400 font-medium mt-1">+' + fmt(b.baseProd) + ' Wh/s pro Stueck</div>' +
+                      '<div class="text-xs text-cyan-400 font-medium mt-1">+<span id="prod-' + b.id + '">' + fmt(b.baseProd) + '</span> Wh/s pro Stueck' +
+                        '<span id="msmult-' + b.id + '" class="hidden ml-1 align-middle text-[10px] font-bold text-amber-300 bg-amber-900/40 border border-amber-700/50 rounded px-1"></span></div>' +
+                      '<div class="mt-1.5">' +
+                        '<div class="flex justify-between gap-2 text-[9px] text-slate-500 font-mono leading-none">' +
+                          '<span id="msnext-' + b.id + '" class="truncate"></span>' +
+                          '<span id="mscount-' + b.id + '" class="shrink-0"></span>' +
+                        '</div>' +
+                        '<div class="h-1 bg-slate-800 rounded mt-1 overflow-hidden"><div id="msbar-' + b.id + '" class="h-full bg-amber-400/70 transition-all" style="width:0%"></div></div>' +
+                      '</div>' +
                     '</div>' +
                     '<div class="text-right shrink-0 pl-2 border-l border-slate-600/50">' +
                       '<div class="text-[10px] text-slate-400">Besitz</div>' +
@@ -239,7 +247,8 @@ const UI = (function () {
                   '<div class="h-4 w-4 text-cyan-400 shrink-0">' + r.icon + '</div>' +
                   '<div class="flex-1 min-w-0">' +
                     '<div class="flex justify-between text-[11px]">' +
-                      '<span class="text-slate-300 truncate">' + r.name + ' <span class="text-slate-500">x' + r.count + '</span></span>' +
+                      '<span class="text-slate-300 truncate">' + r.name + ' <span class="text-slate-500">x' + r.count + '</span>' +
+                        (r.milestoneMult > 1 ? ' <span class="text-amber-400/80">Meilenstein x' + r.milestoneMult + '</span>' : '') + '</span>' +
                       '<span class="text-cyan-400 font-mono ml-2">' + fmt(r.output) + '</span>' +
                     '</div>' +
                     '<div class="h-1 bg-slate-700 rounded mt-1 overflow-hidden">' +
@@ -360,6 +369,21 @@ const UI = (function () {
             if (buyAmount === 'max' && amount < 1) amount = 1;
             const cost = Engine.getBulkCost(b.id, amount);
             $('count-' + b.id).textContent = owned;
+
+            // Mengen-Meilensteine: effektive Produktion, Faktor-Badge und Weg zur naechsten Schwelle
+            const ms = Engine.getMilestoneInfo(b.id);
+            $('prod-' + b.id).textContent = fmt(b.baseProd * ms.mult);
+            const badge = $('msmult-' + b.id);
+            badge.textContent = 'Meilenstein x' + ms.mult;
+            badge.classList.toggle('hidden', ms.mult <= 1);
+            if (ms.next) {
+                $('msnext-' + b.id).textContent = 'noch ' + ms.remaining + ' bis x' + ms.next.mult + ' (' + ms.next.name + ')';
+                $('mscount-' + b.id).textContent = owned + '/' + ms.next.count;
+            } else {
+                $('msnext-' + b.id).textContent = 'alle Meilensteine erreicht';
+                $('mscount-' + b.id).textContent = '';
+            }
+            $('msbar-' + b.id).style.width = ms.pct.toFixed(1) + '%';
             $('cost-' + b.id).textContent = fmt(cost) + ' Wh';
             $('label-' + b.id).textContent = 'Kaufen x' + amount;
             btn.disabled = st.energy < cost;

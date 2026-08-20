@@ -91,6 +91,29 @@ const BUILDINGS_DB = [
 ];
 
 /* ------------------------------------------------------------
+   MENGEN-MEILENSTEINE
+   Gelten pro Gebaeudetyp einzeln und multiplizieren dessen
+   Produktion, sobald die Stueckzahl erreicht ist. Die Faktoren sind
+   kumulativ: bei 100 Stueck wirken 5er, 10er, 25er, 50er und 100er
+   zusammen (2*2*2*3*3 = 72-fache Produktion dieses Typs).
+
+   Zweck: Die Kosten eines Gebaeudes wachsen exponentiell (costFactor),
+   die Produktion pro Stueck war bisher konstant. Damit lohnte sich
+   fruehe Hardware im Lategame nie wieder. Mit den Meilensteinen ist
+   der Sprung auf die naechste Schwelle auch spaet noch ein echter
+   Zugewinn – billige Hardware bleibt eine sinnvolle Investition.
+   ------------------------------------------------------------ */
+const BUILDING_MILESTONES = [
+    { count: 5,    mult: 2,  name: 'Serienschaltung' },
+    { count: 10,   mult: 2,  name: 'Doppelstrang' },
+    { count: 25,   mult: 2,  name: 'Modulfarm' },
+    { count: 50,   mult: 3,  name: 'Industrieanlage' },
+    { count: 100,  mult: 3,  name: 'Grossanlage' },
+    { count: 500,  mult: 5,  name: 'Netzknoten' },
+    { count: 1000, mult: 10, name: 'Kraftwerksklasse' }
+];
+
+/* ------------------------------------------------------------
    SKILLS (Forschungspunkte / FP)
    ------------------------------------------------------------ */
 const SKILLS_DB = [
@@ -272,6 +295,11 @@ const HINTS = [
         id: 'h_passive', title: 'Wh/s ist die wichtigste Zahl',
         text: 'Die gruene Anzeige zeigt deine Produktion pro Sekunde. Sie laeuft weiter, waehrend du nichts tust – und macht auch deine Klicks staerker.',
         check: s => (s.buildings.panel || 0) >= 1
+    },
+    {
+        id: 'h_milestone', title: 'Mengen-Meilensteine',
+        text: 'Ab 5 Stueck derselben Hardware verdoppelt sich deren Produktion. Weitere Stufen folgen bei 10, 25, 50, 100, 500 und 1000 – deshalb lohnt es sich auch spaet im Spiel noch, guenstige Hardware nachzukaufen.',
+        check: s => (s.buildings.panel || 0) >= 4
     },
     {
         id: 'h_bulk', title: 'Mehrere auf einmal',

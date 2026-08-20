@@ -218,10 +218,46 @@ const Engine = (function () {
         return Math.floor(s.baseCost * Math.pow(s.costFactor, level));
     }
 
+    /* ------------------------------------------------------------
+       MENGEN-MEILENSTEINE
+       ------------------------------------------------------------ */
+    /** Kumulativer Produktionsfaktor eines Gebaeudetyps aus seiner Stueckzahl. */
+    function getMilestoneMultiplier(id, count) {
+        if (count === undefined) count = state.buildings[id] || 0;
+        let mult = 1;
+        for (let i = 0; i < BUILDING_MILESTONES.length; i++) {
+            if (count >= BUILDING_MILESTONES[i].count) mult *= BUILDING_MILESTONES[i].mult;
+        }
+        return mult;
+    }
+
+    /**
+     * Meilenstein-Status fuer die Anzeige: aktueller Faktor, naechste
+     * Schwelle und wie weit der Weg dorthin ist.
+     */
+    function getMilestoneInfo(id) {
+        const owned = state.buildings[id] || 0;
+        const next = BUILDING_MILESTONES.find(m => owned < m.count) || null;
+        const prevCount = BUILDING_MILESTONES.reduce((p, m) => (owned >= m.count ? m.count : p), 0);
+        return {
+            owned: owned,
+            mult: getMilestoneMultiplier(id, owned),
+            next: next,
+            remaining: next ? next.count - owned : 0,
+            pct: next ? ((owned - prevCount) / (next.count - prevCount)) * 100 : 100
+        };
+    }
+
+    /** Alle Schwellen, die ein Kauf von 'before' auf 'after' ueberschritten hat. */
+    function crossedMilestones(before, after) {
+        return BUILDING_MILESTONES.filter(m => before < m.count && after >= m.count);
+    }
+
     function getBaseEPS() {
         let eps = 0;
         BUILDINGS_DB.forEach(b => {
-            eps += (state.buildings[b.id] || 0) * b.baseProd;
+            const count = state.buildings[b.id] || 0;
+            eps += count * b.baseProd * getMilestoneMultiplier(b.id, count);
         });
         return eps;
     }
@@ -233,9 +269,11 @@ const Engine = (function () {
         BUILDINGS_DB.forEach(b => {
             const count = state.buildings[b.id] || 0;
             if (count > 0) {
+                const ms = getMilestoneMultiplier(b.id, count);
                 rows.push({
                     id: b.id, name: b.name, icon: b.icon, count: count,
-                    output: count * b.baseProd * mult
+                    milestoneMult: ms,
+                    output: count * b.baseProd * ms * mult
                 });
             }
         });
@@ -333,6 +371,7 @@ const Engine = (function () {
         if (amount === 'max') amount = getMaxAffordable(id);
         if (amount < 1) return 0;
 
+        const before = state.buildings[id] || 0;
         let bought = 0;
         for (let i = 0; i < amount; i++) {
             const cost = getBuildingCost(id, state.buildings[id] || 0);
@@ -354,6 +393,19 @@ const Engine = (function () {
                 });
                 emit('gridchange', id);
             }
+            // Mengen-Meilensteine: jede ueberschrittene Schwelle meldet ihren Faktor
+            crossedMilestones(before, state.buildings[id]).forEach(m => {
+                emit('milestone', {
+                    title: b.name + ' x' + m.count + ': ' + m.name,
+                    text: 'Produktion dieser Hardware x' + m.mult + ' (jetzt insgesamt x' +
+                          getMilestoneMultiplier(id) + ').',
+                    icon: b.icon
+                });
+                emit('log', {
+                    msg: 'Meilenstein: ' + m.count + 'x ' + b.name + ' – Produktion x' + m.mult + '.',
+                    type: 'good'
+                });
+            });
             checkAchievements();
             emit('purchase', { id: id, amount: bought });
         }
@@ -920,6 +972,8 @@ const Engine = (function () {
         getClickPower: getClickPower,
         getMultiplier: getMultiplier,
         getProductionBreakdown: getProductionBreakdown,
+        getMilestoneMultiplier: getMilestoneMultiplier,
+        getMilestoneInfo: getMilestoneInfo,
         getEra: getEra,
         getEraProgress: getEraProgress,
         calculatePendingFP: calculatePendingFP,
