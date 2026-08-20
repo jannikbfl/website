@@ -23,6 +23,7 @@ const EG = (function () {
     let lastActionAt = 0;
     let saveTimer = null;
     let wiped = false;          // blockt Autosave nach dem Loeschen
+    let manualTask = null;      // laufende Handarbeit (nicht Teil des Spielstands)
 
     const state = {
         clock: 6 * 60,          // Ingame-Minuten, Start: Tag 1, 6:00
@@ -452,10 +453,25 @@ const EG = (function () {
             emit('exhausted');
             return null;
         }
+        const k = key(state.map, tgt.x, tgt.y);
+
+        // Ohne richtiges Werkzeug (und mit dem ersten geschnitzten) laeuft der
+        // Abbau ueber die Handarbeit: die UI oeffnet dafuer ein eigenes Fenster.
+        if (tier.manual) {
+            manualTask = {
+                key: k, x: tgt.x, y: tgt.y, node: n, tool: n.tool,
+                needed: tier.manual, done: 0,
+                stamina: tier.stamina, onlyOne: !!tier.manualYield,
+                // Baum: abwechselnd von der Seite. Stein: immer von oben.
+                side: n.tool === 'axt' ? (Math.random() < 0.5 ? 'left' : 'right') : 'top'
+            };
+            emit('manual', manualState());
+            return { manual: true };
+        }
+
         lastActionAt = Date.now();
         state.stamina = Math.max(0, state.stamina - tier.stamina);
 
-        const k = key(state.map, tgt.x, tgt.y);
         const hp = (state.nodeHp[k] || 0) + tier.power;
         emit('hit', { x: tgt.x, y: tgt.y, tool: n.tool });
 
@@ -465,21 +481,87 @@ const EG = (function () {
             return { progress: hp / n.hardness };
         }
 
+        return finishNode(k, tgt.x, tgt.y, n);
+    }
+
+    /**
+     * Feld abgeraeumt: Beute ausschuetten, Nachwuchs-Uhr stellen.
+     * Gemeinsamer Abschluss fuer Werkzeug- und Handarbeit.
+     * onlyOne = mit blossen Haenden faellt genau ein Stueck ab.
+     */
+    function finishNode(k, x, y, n, onlyOne) {
         delete state.nodeHp[k];
         state.nodes[k] = state.clock + n.respawnMin;
         const got = [];
-        n.drops.forEach(d => {
-            const amount = d.min + Math.floor(Math.random() * (d.max - d.min + 1));
-            if (amount > 0) {
-                give(d.item, amount);
-                state.stats.gathered[d.item] = (state.stats.gathered[d.item] || 0) + amount;
-                got.push({ item: d.item, n: amount });
-            }
-        });
-        emit('gathered', { x: tgt.x, y: tgt.y, drops: got });
+        if (onlyOne) {
+            const item = n.drops[0].item;
+            give(item, 1);
+            state.stats.gathered[item] = (state.stats.gathered[item] || 0) + 1;
+            got.push({ item: item, n: 1 });
+        } else {
+            n.drops.forEach(d => {
+                const amount = d.min + Math.floor(Math.random() * (d.max - d.min + 1));
+                if (amount > 0) {
+                    give(d.item, amount);
+                    state.stats.gathered[d.item] = (state.stats.gathered[d.item] || 0) + amount;
+                    got.push({ item: d.item, n: amount });
+                }
+            });
+        }
+        emit('gathered', { x: x, y: y, drops: got });
         checkGoals();
         return { done: true, drops: got };
     }
+
+    /* ------------------------------------------------------------
+       HANDARBEIT
+       Ohne Werkzeug wird gegen den Stamm geschlagen statt Taste gehalten:
+       zehn Treffer fuer ein Holz. Die erste geschnitzte Axt macht daraus
+       einen einzigen Schlag, ab der Steinstufe faellt der Schritt ganz weg.
+       Der Zustand liegt bewusst nicht im Spielstand - ein abgebrochener
+       Baum soll nach dem Neuladen kein halbfertiges Fenster hinterlassen.
+       ------------------------------------------------------------ */
+    function manualState() {
+        if (!manualTask) return null;
+        const t = manualTask;
+        return {
+            tool: t.tool, node: t.node, needed: t.needed, done: t.done,
+            side: t.side, x: t.x, y: t.y,
+            progress: t.done / t.needed
+        };
+    }
+
+    /**
+     * Ein Schlag von aussen. side ist die Seite, von der geschlagen wurde
+     * ('left', 'right' beim Baum, 'top' beim Stein). Passt sie nicht,
+     * zaehlt der Schlag nicht - kostet aber auch keine Kraft.
+     */
+    function manualStrike(side) {
+        if (!manualTask) return null;
+        const t = manualTask;
+        if (side !== t.side) return { miss: true, state: manualState() };
+        if (state.stamina < t.stamina) {
+            log('Keine Kraft mehr. Iss etwas oder leg dich schlafen.', 'bad');
+            emit('exhausted');
+            manualTask = null;
+            return { aborted: true };
+        }
+        state.stamina = Math.max(0, state.stamina - t.stamina);
+        t.done++;
+        emit('stamina');
+        emit('hit', { x: t.x, y: t.y, tool: t.tool });
+
+        if (t.done < t.needed) {
+            // Beim Baum wechselt die Seite, beim Stein bleibt es der Schlag von oben.
+            if (t.tool === 'axt') t.side = t.side === 'left' ? 'right' : 'left';
+            return { hit: true, state: manualState() };
+        }
+        const res = finishNode(t.key, t.x, t.y, t.node, t.onlyOne);
+        manualTask = null;
+        return { done: true, drops: res.drops };
+    }
+
+    function cancelManual() { manualTask = null; }
 
     /* ------------------------------------------------------------
        PFLANZEN
@@ -541,10 +623,49 @@ const EG = (function () {
         const def = machineDef(typeId);
         if (!def || !canAfford(def.cost)) return false;
         pay(def.cost);
-        state.machines[padKey] = { type: typeId, queue: [], out: {} };
+        state.machines[padKey] = { type: typeId, lvl: 1, queue: [], out: {} };
         log(def.name + ' steht.', 'good');
         checkGoals();
         emit('inventory');
+        return true;
+    }
+
+    /** Stufe einer Maschine (1-basiert) und die zugehoerigen Werte. */
+    function machineLevel(padKey) {
+        const m = state.machines[padKey];
+        if (!m) return null;
+        const lvl = m.lvl || 1;
+        return { lvl: lvl, max: EG_MACHINE_LEVELS.length, cur: EG_MACHINE_LEVELS[lvl - 1],
+                 next: EG_MACHINE_LEVELS[lvl] || null };
+    }
+
+    /** Ausbaukosten: Vielfaches der Baukosten plus Materialsperre. */
+    function machineUpgradeCost(padKey) {
+        const info = machineLevel(padKey);
+        if (!info || !info.next) return null;
+        const def = machineDef(state.machines[padKey].type);
+        const c = info.next.cost;
+        const out = {};
+        Object.keys(def.cost).forEach(k => {
+            out[k] = Math.ceil(def.cost[k] * c.costFactor);
+        });
+        Object.keys(c.extra || {}).forEach(k => {
+            out[k] = (out[k] || 0) + c.extra[k];
+        });
+        return out;
+    }
+
+    function upgradeMachine(padKey) {
+        const info = machineLevel(padKey);
+        if (!info || !info.next) return false;
+        const cost = machineUpgradeCost(padKey);
+        if (!canAfford(cost)) { log('Fuer den Ausbau fehlt noch: ' + costText(cost), 'bad'); return false; }
+        pay(cost);
+        state.machines[padKey].lvl = info.lvl + 1;
+        const def = machineDef(state.machines[padKey].type);
+        log(def.name + ' auf Stufe ' + (info.lvl + 1) + ' ausgebaut.', 'good');
+        emit('inventory');
+        checkGoals();
         return true;
     }
 
@@ -562,11 +683,15 @@ const EG = (function () {
         const def = machineDef(m.type);
         const r = def.recipes[index];
         if (!r || !recipeAvailable(r)) return false;
-        if (m.queue.length >= 5) { log(def.name + ': Warteschlange ist voll.', 'bad'); return false; }
+        const lvl = machineLevel(padKey);
+        if (m.queue.length >= lvl.cur.queue) {
+            log(def.name + ': Warteschlange ist voll (Stufe ' + lvl.lvl + ' fasst ' + lvl.cur.queue + ').', 'bad');
+            return false;
+        }
         if (!canAfford(r.in)) { log('Zutaten fehlen: ' + costText(r.in), 'bad'); return false; }
         pay(r.in);
         const startAt = m.queue.length ? m.queue[m.queue.length - 1].done : state.clock;
-        m.queue.push({ r: index, done: startAt + r.minutes });
+        m.queue.push({ r: index, done: startAt + Math.round(r.minutes * lvl.cur.speed) });
         emit('inventory');
         return true;
     }
@@ -609,9 +734,11 @@ const EG = (function () {
         const jobs = m.queue.map(j => ({
             name: Object.keys(def.recipes[j.r].out).map(o => EG_ITEMS[o].name).join(', '),
             remaining: Math.max(0, j.done - state.clock),
-            total: def.recipes[j.r].minutes
+            total: Math.round(def.recipes[j.r].minutes * (EG_MACHINE_LEVELS[(m.lvl || 1) - 1].speed))
         }));
-        return { def: def, jobs: jobs, out: m.out };
+        const lvl = machineLevel(padKey);
+        return { def: def, jobs: jobs, out: m.out, level: lvl,
+                 upgradeCost: machineUpgradeCost(padKey) };
     }
 
     /* ------------------------------------------------------------
@@ -943,12 +1070,14 @@ const EG = (function () {
         daylight: daylight, isNight: isNight,
         // Spiel
         update: update, interact: interact, target: target, move: move,
+        manualState: manualState, manualStrike: manualStrike, cancelManual: cancelManual,
         // Wirtschaft
         count: count, give: give, take: take, canAfford: canAfford, costText: costText,
         buySeed: buySeed, sell: sell, eat: eat, sleep: sleep,
         upgradeTool: upgradeTool, toolUpgradeCost: toolUpgradeCost,
         plotPrice: plotPrice, buyPlot: buyPlot,
         buildMachine: buildMachine, queueRecipe: queueRecipe, collectMachine: collectMachine,
+        machineLevel: machineLevel, machineUpgradeCost: machineUpgradeCost, upgradeMachine: upgradeMachine,
         recipeAvailable: recipeAvailable,
         railwayStatus: railwayStatus, buildRailway: buildRailway,
         cropById: cropById, cropAvailable: cropAvailable,

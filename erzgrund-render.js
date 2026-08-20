@@ -312,6 +312,12 @@ const EGRender = (function () {
         ctx.textAlign = 'center';
         ctx.fillText(def.icon, px + 16, py + 21);
         ctx.textAlign = 'left';
+        // Stufe als Punktreihe am Fuss - im Vorbeigehen ablesbar
+        const lvl = m.lvl || 1;
+        for (let i = 0; i < EG_MACHINE_LEVELS.length; i++) {
+            ctx.fillStyle = i < lvl ? '#facc15' : 'rgba(0,0,0,0.35)';
+            ctx.fillRect(px + 5 + i * 5, py + T - 6, 3, 3);
+        }
         const busy = m.queue.length > 0;
         const ready = Object.keys(m.out).length > 0;
         if (busy) {
@@ -574,5 +580,151 @@ const EGRender = (function () {
         }
     }
 
-    return { init: init, draw: draw, popup: popup, hitBits: hitBits, resize: resize };
+    /* ------------------------------------------------------------
+       HANDARBEIT-FENSTER
+       Eigenes kleines Canvas: Stamm bzw. Felsbrocken mit den Zonen,
+       auf die geschlagen werden muss. Die Animation lebt hier, damit
+       die UI reines DOM bleibt.
+       ------------------------------------------------------------ */
+    const fx = { swing: 0, side: null, ok: true, shake: 0, chips: [] };
+
+    function manualHit(side, ok) {
+        fx.swing = 1; fx.side = side; fx.ok = ok;
+        fx.shake = ok ? 1 : 0.6;
+        if (!ok) return;
+        const cx = side === 'left' ? 118 : side === 'right' ? 162 : 140;
+        const cy = side === 'top' ? 120 : 130;
+        for (let i = 0; i < 9; i++) {
+            fx.chips.push({
+                x: cx, y: cy,
+                vx: (side === 'left' ? 1 : side === 'right' ? -1 : (Math.random() - 0.5) * 2) * (1 + Math.random() * 2),
+                vy: -Math.random() * 3 - 0.5, life: 520
+            });
+        }
+    }
+
+    /**
+     * Zeichnet das Schlag-Fenster. task kommt aus EG.manualState(),
+     * isHand entscheidet zwischen Faust und Werkzeug.
+     */
+    function manual(canvas, task, isHand, dt) {
+        const c = canvas.getContext('2d');
+        const W = canvas.width, H = canvas.height;
+        anim += dt;
+        fx.swing = Math.max(0, fx.swing - dt / 170);
+        fx.shake = Math.max(0, fx.shake - dt / 260);
+        const wood = task.tool === 'axt';
+        const shake = Math.sin(anim / 22) * fx.shake * 4;
+        const pulse = 0.45 + Math.sin(anim / 220) * 0.35;
+
+        c.fillStyle = wood ? '#14331c' : '#241f1c';
+        c.fillRect(0, 0, W, H);
+        c.fillStyle = 'rgba(0,0,0,0.25)';
+        c.fillRect(0, H - 26, W, 26);
+
+        // Klickzonen
+        const zones = wood
+            ? [{ id: 'left', x: 4, y: 30, w: 96, h: H - 60 }, { id: 'right', x: W - 100, y: 30, w: 96, h: H - 60 }]
+            : [{ id: 'top', x: 30, y: 6, w: W - 60, h: 74 }];
+        zones.forEach(z => {
+            const active = z.id === task.side;
+            c.fillStyle = active ? 'rgba(250,204,21,' + (pulse * 0.22) + ')' : 'rgba(255,255,255,0.04)';
+            c.fillRect(z.x, z.y, z.w, z.h);
+            c.strokeStyle = active ? 'rgba(250,204,21,' + (0.5 + pulse * 0.5) + ')' : 'rgba(255,255,255,0.10)';
+            c.lineWidth = active ? 2 : 1;
+            c.strokeRect(z.x + 0.5, z.y + 0.5, z.w - 1, z.h - 1);
+            if (active) {
+                c.fillStyle = '#facc15';
+                c.font = 'bold 20px system-ui, sans-serif';
+                c.textAlign = 'center';
+                const ax = z.x + z.w / 2, ay = z.y + z.h / 2;
+                c.fillText(z.id === 'left' ? '▶' : z.id === 'right' ? '◀' : '▼', ax, ay + 6);
+                c.textAlign = 'left';
+            }
+        });
+
+        const prog = task.done / task.needed;
+        if (wood) {
+            const tx = W / 2 + shake;
+            c.fillStyle = '#1e6b34';
+            c.beginPath(); c.arc(tx - 16, 34, 22, 0, 7); c.arc(tx + 16, 34, 22, 0, 7); c.fill();
+            c.fillStyle = '#2f8f43';
+            c.beginPath(); c.arc(tx, 22, 26, 0, 7); c.fill();
+            c.fillStyle = '#5b3a1c';
+            c.fillRect(tx - 20, 46, 40, H - 78);
+            c.fillStyle = 'rgba(0,0,0,0.25)';
+            c.fillRect(tx + 8, 46, 8, H - 78);
+            c.fillStyle = 'rgba(255,255,255,0.10)';
+            for (let i = 0; i < 5; i++) c.fillRect(tx - 16, 60 + i * 24, 24, 3);
+            // Die Kerbe waechst mit jedem Treffer
+            const notch = 6 + prog * 15;
+            c.fillStyle = '#14331c';
+            c.beginPath();
+            c.moveTo(tx - 20, 132 - notch / 2); c.lineTo(tx - 20 + notch, 132); c.lineTo(tx - 20, 132 + notch / 2);
+            c.closePath(); c.fill();
+            c.beginPath();
+            c.moveTo(tx + 20, 132 - notch / 2); c.lineTo(tx + 20 - notch, 132); c.lineTo(tx + 20, 132 + notch / 2);
+            c.closePath(); c.fill();
+        } else {
+            const rx = W / 2 + shake, ry = H - 62;
+            c.fillStyle = 'rgba(0,0,0,0.35)';
+            c.beginPath(); c.ellipse(rx, ry + 46, 62, 12, 0, 0, 7); c.fill();
+            c.fillStyle = '#8a8580';
+            c.beginPath();
+            c.moveTo(rx - 62, ry + 44); c.lineTo(rx - 46, ry - 20); c.lineTo(rx - 6, ry - 40);
+            c.lineTo(rx + 42, ry - 16); c.lineTo(rx + 60, ry + 44);
+            c.closePath(); c.fill();
+            c.fillStyle = 'rgba(255,255,255,0.16)';
+            c.beginPath();
+            c.moveTo(rx - 40, ry - 12); c.lineTo(rx - 6, ry - 34); c.lineTo(rx + 2, ry - 4);
+            c.closePath(); c.fill();
+            c.strokeStyle = 'rgba(0,0,0,0.55)';
+            c.lineWidth = 2;
+            const cracks = Math.round(prog * 5);
+            for (let i = 0; i < cracks; i++) {
+                c.beginPath();
+                c.moveTo(rx - 30 + i * 15, ry - 24 + (i % 2) * 8);
+                c.lineTo(rx - 18 + i * 15, ry + 18 + (i % 3) * 6);
+                c.stroke();
+            }
+        }
+
+        // Faust oder Werkzeug schwingt herein
+        if (fx.swing > 0 && fx.side) {
+            const t = 1 - fx.swing;
+            let hx, hy;
+            if (fx.side === 'left') { hx = 20 + t * 88; hy = 130; }
+            else if (fx.side === 'right') { hx = W - 20 - t * 88; hy = 130; }
+            else { hx = W / 2; hy = 20 + t * 76; }
+            c.save();
+            c.translate(hx, hy);
+            if (isHand) {
+                c.fillStyle = '#f2c396';
+                c.beginPath(); c.arc(0, 0, 13, 0, 7); c.fill();
+                c.fillStyle = 'rgba(0,0,0,0.18)';
+                c.fillRect(-13, -3, 26, 3);
+            } else {
+                c.rotate(fx.side === 'right' ? -0.5 : 0.5);
+                c.fillStyle = '#8b5a2b';
+                c.fillRect(-3, -2, 6, 30);
+                c.fillStyle = '#cbd5e1';
+                c.fillRect(-11, -14, 22, 12);
+            }
+            c.restore();
+        }
+
+        for (let i = fx.chips.length - 1; i >= 0; i--) {
+            const b = fx.chips[i];
+            b.life -= dt;
+            b.x += b.vx * (dt / 16); b.y += b.vy * (dt / 16); b.vy += 0.18 * (dt / 16);
+            if (b.life <= 0) { fx.chips.splice(i, 1); continue; }
+            c.globalAlpha = Math.max(0, b.life / 520);
+            c.fillStyle = wood ? '#c89a5b' : '#d6d3d1';
+            c.fillRect(b.x, b.y, 4, 4);
+            c.globalAlpha = 1;
+        }
+    }
+
+    return { init: init, draw: draw, popup: popup, hitBits: hitBits, resize: resize,
+             manual: manual, manualHit: manualHit };
 })();

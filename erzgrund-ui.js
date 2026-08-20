@@ -107,6 +107,7 @@ const EGUI = (function () {
         else if (act === 'build') { if (EG.buildMachine(panelKey, arg)) openPanel('machine', panelKey); }
         else if (act === 'queue') EG.queueRecipe(panelKey, num);
         else if (act === 'collect') EG.collectMachine(panelKey);
+        else if (act === 'upgrade') EG.upgradeMachine(panelKey);
         else if (act === 'sleep') { EG.sleep(); closePanel(); }
         else if (act === 'rail') EG.buildRailway(num);
         else if (act === 'seed') { EG.state.activeSeed = arg; renderSeedBar(); }
@@ -199,8 +200,23 @@ const EGUI = (function () {
     function panelMachine() {
         const st = EG.machineStatus(panelKey);
         if (!st) return '<div class="eg-empty">Hier steht nichts.</div>';
-        let h = '<div class="font-bold text-base mb-1">' + st.def.icon + ' ' + st.def.name + '</div>' +
-                '<div class="text-[11px] text-slate-400 mb-3">' + st.def.desc + '</div>';
+        const lv = st.level;
+        let h = '<div class="font-bold text-base mb-1">' + st.def.icon + ' ' + st.def.name +
+                ' <span class="text-[11px] text-amber-300">Stufe ' + lv.lvl + '/' + lv.max + '</span></div>' +
+                '<div class="text-[11px] text-slate-400 mb-2">' + st.def.desc + '</div>' +
+                '<div class="text-[11px] text-slate-300 mb-3">Tempo ' + Math.round(100 / lv.cur.speed) + '% ' +
+                '<span class="text-slate-600">&middot;</span> Warteschlange ' + st.jobs.length + '/' + lv.cur.queue + '</div>';
+        if (lv.next) {
+            h += '<div class="eg-row"><div class="flex-1">' +
+                '<div class="font-bold text-sm">Ausbau auf Stufe ' + (lv.lvl + 1) + '</div>' +
+                '<div class="text-[11px] text-slate-400">Tempo ' + Math.round(100 / lv.cur.speed) + '% &rarr; ' +
+                Math.round(100 / lv.next.speed) + '% ' +
+                '<span class="text-slate-600">&middot;</span> Warteschlange ' + lv.cur.queue + ' &rarr; ' + lv.next.queue + '</div>' +
+                '<div class="text-[11px] mt-1">' + costList(st.upgradeCost) + '</div></div>' +
+                '<button class="eg-btn primary" data-act="upgrade">Ausbauen</button></div>';
+        } else {
+            h += '<div class="text-[11px] text-emerald-400 mb-2">Hoechste Stufe erreicht.</div>';
+        }
 
         const outItems = Object.keys(st.out);
         if (outItems.length) {
@@ -351,12 +367,88 @@ const EGUI = (function () {
     }
 
     /* ------------------------------------------------------------
+       HANDARBEIT
+       Ohne Werkzeug (und mit dem ersten geschnitzten) wird nicht die
+       Taste gehalten, sondern von Hand geschlagen: die Engine meldet
+       eine Aufgabe, hier laeuft das Fenster dazu.
+       ------------------------------------------------------------ */
+    let manualTask = null;
+
+    function openManual(task) {
+        manualTask = task;
+        const hand = EG.state.tools[task.tool] === 0;
+        const wood = task.tool === 'axt';
+        $('eg-manual-title').textContent = wood ? 'Baum faellen' : task.node.name + ' aufbrechen';
+        $('eg-manual-hint').textContent = wood
+            ? (hand ? 'Kein Werkzeug: schlag abwechselnd von links und rechts gegen den Stamm. Klick auf die leuchtende Seite (oder A und D).'
+                    : 'Ein sauberer Schlag gegen den Stamm - klick auf die leuchtende Seite.')
+            : (hand ? 'Kein Werkzeug: schlag von oben auf den Stein. Klick auf das leuchtende Feld (oder W).'
+                    : 'Ein sauberer Schlag von oben - klick auf das leuchtende Feld.');
+        $('eg-manual').classList.remove('hidden');
+        updateManualBar();
+    }
+
+    function updateManualBar() {
+        if (!manualTask) return;
+        const pct = (manualTask.done / manualTask.needed) * 100;
+        $('eg-manual-bar').style.width = pct + '%';
+        $('eg-manual-count').textContent = manualTask.done + ' / ' + manualTask.needed + ' Schlaege';
+    }
+
+    function closeManual() {
+        manualTask = null;
+        EG.cancelManual();
+        $('eg-manual').classList.add('hidden');
+    }
+
+    function manualStrike(side) {
+        if (!manualTask) return;
+        const res = EG.manualStrike(side);
+        if (!res) return;
+        if (res.miss) { EGRender.manualHit(side, false); return; }
+        EGRender.manualHit(side, true);
+        if (res.aborted) { closeManual(); return; }
+        if (res.done) {
+            manualTask = null;
+            $('eg-manual').classList.add('hidden');
+            const txt = res.drops.map(d => d.n + 'x ' + itemName(d.item)).join(', ');
+            toast('Geschafft', txt + ' im Beutel.', 'good');
+            return;
+        }
+        manualTask = res.state;
+        updateManualBar();
+    }
+
+    /** Klick auf das Canvas in eine der Zonen uebersetzen. */
+    function manualClick(ev) {
+        if (!manualTask) return;
+        const cv = $('eg-manual-canvas');
+        const box = cv.getBoundingClientRect();
+        const p = ev.touches && ev.touches[0] ? ev.touches[0] : ev;
+        const x = (p.clientX - box.left) / box.width * cv.width;
+        const y = (p.clientY - box.top) / box.height * cv.height;
+        if (manualTask.tool === 'axt') {
+            if (x < cv.width * 0.38) manualStrike('left');
+            else if (x > cv.width * 0.62) manualStrike('right');
+        } else if (y < cv.height * 0.42) {
+            manualStrike('top');
+        }
+    }
+
+    /* ------------------------------------------------------------
        EINGABE
        ------------------------------------------------------------ */
     function bindInput() {
         window.addEventListener('keydown', e => {
             const k = e.key.toLowerCase();
-            if (k === 'escape') { closePanel(); return; }
+            if (k === 'escape') { closePanel(); closeManual(); return; }
+            if (manualTask) {
+                // Waehrend der Handarbeit steuern A/D bzw. W die Schlaege
+                if (k === 'a' || k === 'arrowleft') { e.preventDefault(); manualStrike('left'); return; }
+                if (k === 'd' || k === 'arrowright') { e.preventDefault(); manualStrike('right'); return; }
+                if (k === 'w' || k === 'arrowup') { e.preventDefault(); manualStrike('top'); return; }
+                if (k === 'e' || k === ' ') { e.preventDefault(); return; }
+            }
             if (['w', 'a', 's', 'd', 'e', ' ', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].indexOf(k) !== -1) {
                 e.preventDefault();
             }
@@ -374,6 +466,9 @@ const EGUI = (function () {
         window.addEventListener('blur', () => { Object.keys(keys).forEach(k => keys[k] = false); });
 
         $('eg-panel-close').addEventListener('click', closePanel);
+        $('eg-manual-cancel').addEventListener('click', closeManual);
+        $('eg-manual-canvas').addEventListener('mousedown', manualClick);
+        $('eg-manual-canvas').addEventListener('touchstart', e => { e.preventDefault(); manualClick(e); }, { passive: false });
         $('eg-panel').addEventListener('click', e => { if (e.target === $('eg-panel')) closePanel(); });
         ['inv', 'goals', 'options', 'help'].forEach(p => {
             const b = $('eg-btn-' + p);
@@ -420,7 +515,7 @@ const EGUI = (function () {
         const dt = Math.min(100, ts - (lastFrame || ts));
         lastFrame = ts;
 
-        const open = !!panel;
+        const open = !!panel || !!manualTask;
         const inp = open ? { dx: 0, dy: 0 } : inputVector();
         EG.update(dt, inp);
 
@@ -436,6 +531,9 @@ const EGUI = (function () {
         if (!keys.e && !keys[' ']) interactLatch = false;
 
         EGRender.draw(dt, !open && (inp.dx !== 0 || inp.dy !== 0));
+        if (manualTask) {
+            EGRender.manual($('eg-manual-canvas'), manualTask, EG.state.tools[manualTask.tool] === 0, dt);
+        }
         renderHud();
         if (open && (panel === 'machine' || panel === 'rail')) renderPanel();
 
@@ -449,6 +547,7 @@ const EGUI = (function () {
         EG.on('log', d => logLine(d.msg, d.kind));
         EG.on('inventory', () => { renderSeedBar(); if (panel) renderPanel(); });
         EG.on('open', d => openPanel(d.panel, d.key));
+        EG.on('manual', openManual);
         EG.on('gathered', d => {
             d.drops.forEach((drop, i) => {
                 EGRender.popup('+' + drop.n + ' ' + itemIcon(drop.item),

@@ -114,7 +114,8 @@ const EG_TOOLS = {
     axt: {
         name: 'Axt', icon: '🪓', verb: 'faellen',
         tiers: [
-            { name: 'Holzaxt',     power: 1,  stamina: 3.5, level: 1, cost: null },
+            { name: 'Blosse Haende', power: 1, stamina: 1.5, level: 1, manual: 10, manualYield: 1, cost: null },
+            { name: 'Holzaxt',     power: 1,  stamina: 3.5, level: 1, manual: 1, cost: { holz: 1, stein: 1 } },
             { name: 'Steinaxt',    power: 2,  stamina: 3.5, level: 2, cost: { taler: 90,    holz: 25, stein: 20 } },
             { name: 'Kupferaxt',   power: 3,  stamina: 3,   level: 3, cost: { taler: 420,   brett: 20, kupferbarren: 6 } },
             { name: 'Eisenaxt',    power: 5,  stamina: 2.5, level: 4, cost: { taler: 1600,  brett: 40, eisenbarren: 10 } },
@@ -125,7 +126,8 @@ const EG_TOOLS = {
     spitzhacke: {
         name: 'Spitzhacke', icon: '⛏️', verb: 'abbauen',
         tiers: [
-            { name: 'Holzspitzhacke',    power: 1,  stamina: 3.5, level: 1, cost: null },
+            { name: 'Blosse Haende', power: 1, stamina: 1.5, level: 1, manual: 10, manualYield: 1, cost: null },
+            { name: 'Holzspitzhacke',    power: 1,  stamina: 3.5, level: 1, manual: 1, cost: { holz: 1, stein: 1 } },
             { name: 'Steinspitzhacke',   power: 2,  stamina: 3.5, level: 2, cost: { taler: 90,    holz: 20, stein: 25 } },
             { name: 'Kupferspitzhacke',  power: 3,  stamina: 3,   level: 3, cost: { taler: 420,   ziegel: 20, kupferbarren: 6 } },
             { name: 'Eisenspitzhacke',   power: 5,  stamina: 2.5, level: 4, cost: { taler: 1600,  ziegel: 40, eisenbarren: 10 } },
@@ -252,6 +254,25 @@ const EG_MACHINES = [
 ];
 
 /* ------------------------------------------------------------
+   MASCHINEN-STUFEN
+   Gelten fuer jede Maschine gleich. Zwei Achsen, damit ein Ausbau
+   sofort lesbar ist: Tempo (Faktor auf die Rezeptdauer) und Groesse
+   der Warteschlange.
+
+   costFactor rechnet gegen die Baukosten der jeweiligen Maschine -
+   ein Ausbau des Saegewerks kostet also weniger als einer der
+   Montagehalle. extra kommt als Materialsperre obendrauf, damit
+   Stufen nicht vor der passenden Spielphase erreichbar sind.
+   ------------------------------------------------------------ */
+const EG_MACHINE_LEVELS = [
+    { speed: 1.00, queue: 3, cost: null },
+    { speed: 0.82, queue: 4, cost: { costFactor: 1.4, extra: { brett: 10, ziegel: 10 } } },
+    { speed: 0.68, queue: 5, cost: { costFactor: 2.6, extra: { eisenbarren: 4 } } },
+    { speed: 0.56, queue: 7, cost: { costFactor: 5.0, extra: { stahl: 3 } } },
+    { speed: 0.45, queue: 9, cost: { costFactor: 9.0, extra: { stahl: 6, schliffdiamant: 1 } } }
+];
+
+/* ------------------------------------------------------------
    ERZBAHN - das Endziel
    Vier Bauabschnitte an der alten Station. Ist der letzte fertig,
    faehrt die Bahn wieder und das Spiel bekommt seinen Abspann.
@@ -286,7 +307,7 @@ const EG_RAILWAY = [
 const EG_GOALS = [
     {
         id: 'g_holz', name: 'Erstes Holz', reward: 40,
-        desc: 'Faelle 10 Holz im Wald westlich vom Hof.',
+        desc: 'Schlag dir 10 Holz aus dem Wald westlich vom Hof.',
         check: s => (s.stats.gathered.holz || 0) >= 10
     },
     {
@@ -305,9 +326,14 @@ const EG_GOALS = [
         check: s => s.stats.sold >= 1
     },
     {
+        id: 'g_werkzeug', name: 'Erstes Werkzeug', reward: 80,
+        desc: 'Schnitz dir aus einem Holz und einem Stein die erste Axt oder Spitzhacke.',
+        check: s => s.tools.axt >= 1 || s.tools.spitzhacke >= 1
+    },
+    {
         id: 'g_stein', name: 'Steinzeit', reward: 120,
-        desc: 'Ruest Axt und Spitzhacke auf Stein hoch.',
-        check: s => s.tools.axt >= 1 && s.tools.spitzhacke >= 1
+        desc: 'Ruest Axt und Spitzhacke auf Stein hoch - danach faellt das Schlagen von Hand weg.',
+        check: s => s.tools.axt >= 2 && s.tools.spitzhacke >= 2
     },
     {
         id: 'g_mine', name: 'Unter Tage', reward: 150,
@@ -362,7 +388,7 @@ const EG_GOALS = [
 const EG_HINTS = [
     {
         id: 'h_move', title: 'Willkommen im Erzgrund',
-        text: 'Lauf mit WASD oder den Pfeiltasten. Steh vor etwas und druecke E - Baeume, Felsen, Beete, Tueren, alles laeuft ueber diese eine Taste.',
+        text: 'Lauf mit WASD oder den Pfeiltasten. Steh vor etwas und druecke E - Baeume, Felsen, Beete, Tueren, alles laeuft ueber diese eine Taste. Werkzeug hast du noch keins: die ersten Baeume und Steine gehen nur mit blossen Haenden.',
         check: () => true
     },
     {
@@ -374,6 +400,11 @@ const EG_HINTS = [
         id: 'h_sell', title: 'Verkaufskiste',
         text: 'Alles, was du in die Kiste neben dem Haus legst, wird sofort zu Talern. Samen und Werkzeuge kaufst du am Laden daneben.',
         check: s => (s.stats.gathered.holz || 0) >= 5
+    },
+    {
+        id: 'h_craft', title: 'Erstes Werkzeug',
+        text: 'Ein Holz und ein Stein reichen fuer eine Axt oder eine Spitzhacke. Beides gibt es im Laden neben dem Haus - danach brauchst du pro Baum nur noch einen Schlag statt zehn.',
+        check: s => (s.inv.holz || 0) >= 1 && (s.inv.stein || 0) >= 1 && s.tools.axt === 0 && s.tools.spitzhacke === 0
     },
     {
         id: 'h_plot', title: 'Beete',

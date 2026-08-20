@@ -128,3 +128,10 @@
     .eg-action { display: flex; }
     #eg-log { max-width: 45%; bottom: 90px; }
 }
+
+/* --- Handarbeit-Fenster --- */
+.eg-manual-canvas {
+    display: block; width: 100%; height: auto;
+    border-radius: 12px; border: 1px solid #334155;
+    cursor: pointer; touch-action: manipulation;
+}

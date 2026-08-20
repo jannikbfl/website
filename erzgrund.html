@@ -93,6 +93,20 @@
         </div>
     </div>
 
+    <!-- ============ HANDARBEIT ============ -->
+    <div id="eg-manual" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 w-full max-w-xs shadow-2xl">
+            <h3 id="eg-manual-title" class="font-bold text-white mb-1"></h3>
+            <p id="eg-manual-hint" class="text-[11px] text-slate-400 leading-snug mb-3"></p>
+            <canvas id="eg-manual-canvas" width="280" height="220" class="eg-manual-canvas"></canvas>
+            <div class="eg-bar mt-3"><div id="eg-manual-bar"></div></div>
+            <div class="flex items-center justify-between mt-2">
+                <span id="eg-manual-count" class="text-[11px] font-mono text-slate-400"></span>
+                <button id="eg-manual-cancel" class="eg-btn">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
     <!-- ============ ABSPANN ============ -->
     <div id="eg-ending" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div class="bg-gradient-to-b from-slate-800 to-slate-900 border border-amber-700/50 rounded-2xl p-6 max-w-lg w-full shadow-2xl max-h-[85vh] overflow-y-auto">

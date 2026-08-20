@@ -21,7 +21,8 @@ gezeichnet.
 
 **Die Schleife:**
 
-1. **Sammeln** – Bäume, Felsen und Erzadern abbauen. Kostet Ausdauer.
+1. **Sammeln** – Bäume, Felsen und Erzadern abbauen. Kostet Ausdauer. Ganz am Anfang
+   ohne Werkzeug: dann wird von Hand geschlagen (siehe Handarbeit).
 2. **Anbauen** – Saatgut kaufen, Beete bepflanzen, in Echtzeit wachsen lassen.
 3. **Verarbeiten** – Maschinen bauen, Rezepte einreihen; sie arbeiten weiter,
    während man woanders ist.
@@ -109,9 +110,37 @@ Ingame-Minuten nach.
 
 ### Werkzeuge
 
-Sechs Stufen je Axt und Spitzhacke: Holz, Stein, Kupfer, Eisen, Stahl, Diamant.
-Kraft 1 → 13, Ausdauerkosten 3,5 → 1,5. Geschmiedet wird im Laden gegen Taler und
-Material.
+Sieben Stufen je Axt und Spitzhacke, beginnend mit den bloßen Händen:
+
+| Stufe | Kraft | Ausdauer | Schläge von Hand | Kosten |
+|---|---|---|---|---|
+| Bloße Hände | 1 | 1,5 | 10 (Ertrag: 1 Stück) | – |
+| Holzaxt / Holzspitzhacke | 1 | 3,5 | 1 | 1 Holz + 1 Stein |
+| Stein | 2 | 3,5 | – | 90 T + Material |
+| Kupfer | 3 | 3 | – | 420 T + Material |
+| Eisen | 5 | 2,5 | – | 1.600 T + Material |
+| Stahl | 8 | 2 | – | 6.000 T + Material |
+| Diamant | 13 | 1,5 | – | 22.000 T + Material |
+
+Geschmiedet wird im Laden. Der Einstieg ist bewusst eng: Das allererste Holz und der
+erste Stein kosten je zehn Schläge von Hand – und genau daraus entsteht das erste
+Werkzeug.
+
+### Handarbeit
+
+Trägt die Werkzeugstufe ein `manual`, läuft der Abbau nicht über gehaltenes E,
+sondern über ein eigenes Fenster:
+
+- **Baum:** abwechselnd von links und rechts gegen den Stamm. Die geforderte Seite
+  leuchtet; ein Schlag auf die falsche Seite zählt nicht, kostet aber auch keine
+  Kraft.
+- **Stein:** von oben auf den Brocken.
+- Bedienbar mit Maus, Finger oder über A/D beziehungsweise W.
+
+Mit bloßen Händen sind es zehn Treffer für **ein** Stück, mit dem geschnitzten
+Werkzeug ein einziger Treffer für die volle Ausbeute, ab der Steinstufe fällt das
+Fenster ganz weg. Der Zustand liegt bewusst nicht im Spielstand – ein abgebrochener
+Baum hinterlässt nach dem Neuladen kein halbfertiges Fenster.
 
 ### Ausdauer
 
@@ -136,8 +165,8 @@ Falle.
 
 ### Maschinen
 
-Acht Stück, jede auf einem Bauplatz am Hof, jede mit Warteschlange (max. 5
-Aufträge). Sie laufen unabhängig vom Aufenthaltsort weiter.
+Acht Stück, jede auf einem Bauplatz am Hof, jede mit eigener Warteschlange. Sie
+laufen unabhängig vom Aufenthaltsort weiter.
 
 | Maschine | macht aus … | … |
 |---|---|---|
@@ -152,6 +181,28 @@ Aufträge). Sie laufen unabhängig vom Aufenthaltsort weiter.
 
 Rezepte mit `unlock` erscheinen erst, wenn der Rohstoff einmal im Beutel war – der
 Schmelzofen zeigt Eisen also erst, wenn Eisenerz gefunden wurde.
+
+### Maschinen-Stufen
+
+Jede Maschine lässt sich viermal ausbauen (`EG_MACHINE_LEVELS`). Zwei Achsen, damit
+der Nutzen ohne Rechnen erkennbar ist:
+
+| Stufe | Dauer | Tempo | Warteschlange |
+|---|---|---|---|
+| 1 | 100 % | 100 % | 3 |
+| 2 | 82 % | 122 % | 4 |
+| 3 | 68 % | 147 % | 5 |
+| 4 | 56 % | 179 % | 7 |
+| 5 | 45 % | 222 % | 9 |
+
+Die Kosten sind ein Vielfaches der Baukosten der jeweiligen Maschine (`costFactor`)
+plus eine Materialsperre (`extra`): Stufe 2 verlangt Bretter und Ziegel, Stufe 3
+Eisenbarren, Stufe 4 Stahl, Stufe 5 zusätzlich einen Schliffdiamanten. Ein Ausbau
+des Sägewerks kostet damit ein Vielfaches weniger als einer der Montagehalle, und
+keine Stufe ist vor der passenden Spielphase erreichbar.
+
+Im Spiel zeigt eine Punktreihe am Fuß der Maschine die Stufe, das Panel Tempo,
+Warteschlangenfüllung und die Vorschau auf die nächste Stufe.
 
 ### Ende
 
@@ -177,6 +228,7 @@ Dazu sieben Hinweise (`EG_HINTS`), die kontextabhängig genau einmal erscheinen.
 | 1–4 | Saatgut wählen |
 | I / Z / H | Beutel / Ziele / Steuerung |
 | Esc | Panel schließen |
+| Klick oder A/D bzw. W | im Handarbeit-Fenster zuschlagen |
 | Steuerkreuz + großer Knopf | dasselbe auf Touch-Geräten |
 
 Das Zielfeld ist das Feld vor der Figur; steht dort nichts Benutzbares, zählt das
@@ -224,6 +276,8 @@ Import laufen über Base64 im Optionen-Panel.
 - **Neue Pflanze:** Eintrag in `EG_CROPS`; optional `unlock: state => …`.
 - **Neue Maschine oder neues Rezept:** Eintrag in `EG_MACHINES`. Rezepte sind reine
   Daten, die Engine kennt keine Sonderfälle.
+- **Maschinen-Stufen:** Zeile in `EG_MACHINE_LEVELS`. Tempo und Warteschlange
+  gelten für alle Maschinen gemeinsam, die Kosten skalieren über `costFactor`.
 - **Neues Rohstoff-Feld:** Zeichen in `EG_NODES`, dann in `EG_MAPS` streuen und in
   `SOLID` (Engine) sowie im Renderer eine Farbe ergänzen.
 - **Neue Karte:** Eintrag in `EG_MAPS` mit `up`/`down` und optional `needLevel`.
