@@ -282,9 +282,22 @@ const Engine = (function () {
         return rows.sort((a, b) => b.output - a.output);
     }
 
+    /**
+     * Dauerbonus aus den insgesamt verdienten Forschungspunkten.
+     * Bewusst linear: der FP-Ertrag haengt selbst an der Produktion,
+     * ein exponentieller Bonus wuerde die Kurve aufschaukeln.
+     * Ein Reboot wirkt dadurch sofort auf alles, was danach steht –
+     * der Wiederaufbau mit wenig Hardware faellt entsprechend kuerzer aus.
+     */
+    function getFPMultiplier(fp) {
+        if (fp === undefined) fp = state.stats.totalFPEarned;
+        return 1 + (fp * CONFIG.fpProductionPerPoint);
+    }
+
     function getMultiplier() {
         let mult = 1 + ((state.skills.passive || 0) * 0.20);
         mult *= 1 + ((state.metaSkills.core_output || 0) * 0.50);
+        mult *= getFPMultiplier();
         mult *= getBuffMultiplier('production');
         if (currentEvent && currentEvent.mult) mult *= currentEvent.mult;
         return mult;
@@ -294,6 +307,7 @@ const Engine = (function () {
         const base = 1 + (getBaseEPS() * CONFIG.clickEpsShare);
         let mult = 1 + ((state.skills.click || 0) * 1.0);
         mult *= 1 + ((state.metaSkills.core_output || 0) * 0.50);
+        mult *= getFPMultiplier();
         mult *= getBuffMultiplier('click');
         if (currentEvent && currentEvent.mult) mult *= currentEvent.mult;
         return base * mult;
@@ -971,6 +985,7 @@ const Engine = (function () {
         getEPS: getEPS,
         getClickPower: getClickPower,
         getMultiplier: getMultiplier,
+        getFPMultiplier: getFPMultiplier,
         getProductionBreakdown: getProductionBreakdown,
         getMilestoneMultiplier: getMilestoneMultiplier,
         getMilestoneInfo: getMilestoneInfo,

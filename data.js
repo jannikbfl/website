@@ -37,55 +37,55 @@ const BUILDINGS_DB = [
     {
         id: 'inverter', name: 'Wechselrichter', icon: ICONS.inverter,
         desc: 'Verbessert die Einspeisung ins Heimnetz.',
-        baseCost: 1416, baseProd: 8, costFactor: 1.14, era: 0,
+        baseCost: 1416, costFactor: 1.14, era: 0,
         flavor: 'Gleichstrom rein, Wechselstrom raus. Endlich zaehlt der Zaehler rueckwaerts.'
     },
     {
         id: 'smartmeter', name: 'Smart Meter API', icon: ICONS.smartmeter,
         desc: 'Automatisierte Auslesung & Last-Verteilung.',
-        baseCost: 31329, baseProd: 60, costFactor: 1.15, era: 1,
+        baseCost: 31329, costFactor: 1.15, era: 1,
         flavor: 'Der Zaehler spricht jetzt JSON. Der Netzbetreiber findet das mittelspannend.'
     },
     {
         id: 'battery', name: 'Heimspeicher-Rack', icon: ICONS.battery,
         desc: 'LiFePO4 Speicher puffert die Produktion.',
-        baseCost: 770171, baseProd: 500, costFactor: 1.15, era: 1,
+        baseCost: 770171, costFactor: 1.15, era: 1,
         flavor: 'Sonne von mittags, Kaffee um Mitternacht.'
     },
     {
         id: 'fpga', name: 'FPGA Grid-Steuerung', icon: ICONS.fpga,
         desc: 'Hardware-nahe Echtzeit-Steuerung des Netzes.',
-        baseCost: 20448047, baseProd: 4500, costFactor: 1.15, era: 2,
+        baseCost: 20448047, costFactor: 1.15, era: 2,
         flavor: 'Ab hier reagiert das Netz schneller, als du blinzeln kannst.'
     },
     {
         id: 'riscv', name: 'RISC-V Coprozessor', icon: ICONS.riscv,
         desc: 'KI-gestuetzte Vorhersage der Sonnenzyklen.',
-        baseCost: 536193224, baseProd: 40000, costFactor: 1.16, era: 2,
+        baseCost: 536193224, costFactor: 1.16, era: 2,
         flavor: 'Offene Architektur, geschlossener Regelkreis.'
     },
     {
         id: 'trading', name: 'Python Stromhandel', icon: ICONS.trading,
         desc: 'Automatisierter Hochfrequenzhandel an der Stromboerse.',
-        baseCost: 13840487601, baseProd: 350000, costFactor: 1.16, era: 3,
+        baseCost: 13840487601, costFactor: 1.16, era: 3,
         flavor: 'Der Bot kauft nachts billig und verkauft mittags teuer. Du schlaefst.'
     },
     {
         id: 'vpp', name: 'Virtuelles Kraftwerk', icon: ICONS.vpp,
         desc: 'Buendelt tausende Heimspeicher zu einem Schwarm.',
-        baseCost: 326635507382, baseProd: 2800000, costFactor: 1.16, era: 3,
+        baseCost: 326635507382, costFactor: 1.16, era: 3,
         flavor: 'Kein einziges Kraftwerk gebaut – und trotzdem eins.'
     },
     {
         id: 'fusion', name: 'Fusions-Testreaktor', icon: ICONS.fusion,
         desc: 'Experimenteller Reaktor im ehemaligen Gartenhaus.',
-        baseCost: 8259212115243, baseProd: 24000000, costFactor: 1.17, era: 4,
+        baseCost: 8259212115243, costFactor: 1.17, era: 4,
         flavor: 'Die Baugenehmigung war ueberraschend unkompliziert.'
     },
     {
         id: 'dyson', name: 'Dyson-Schwarm', icon: ICONS.dyson,
         desc: 'Satelliten-Netzwerk im Sonnenorbit.',
-        baseCost: 213190912724712, baseProd: 210000000, costFactor: 1.17, era: 5,
+        baseCost: 213190912724712, costFactor: 1.17, era: 5,
         flavor: 'Es fing mit einem Balkon-Panel an.'
     }
 ];
@@ -112,6 +112,27 @@ const BUILDING_MILESTONES = [
     { count: 500,  mult: 5,  name: 'Netzknoten' },
     { count: 1000, mult: 10, name: 'Kraftwerksklasse' }
 ];
+
+/* ------------------------------------------------------------
+   PRODUKTIONS-KURVE DER HARDWARE-STUFEN
+   Regel: Ein einzelnes Stueck einer neuen Stufe erzeugt genau so
+   viel wie zehn Stueck der Stufe davor – inklusive deren Mengen-
+   Meilensteinen bei 5 und 10. Der Umstieg auf ein neues Tier ist
+   damit immer ein Sprung nach vorn und nie ein Rueckschritt.
+
+   Nur das Balkon-Panel traegt einen eigenen Wert (baseProd: 1),
+   alles darueber wird hier abgeleitet. Wer die Kurve aendern will,
+   dreht an den Meilenstein-Faktoren oder an dieser Regel – nicht
+   an zehn einzeln gepflegten Zahlen.
+   ------------------------------------------------------------ */
+(function deriveBuildingProduction() {
+    const milestoneAt10 = BUILDING_MILESTONES
+        .filter(m => m.count <= 10)
+        .reduce((f, m) => f * m.mult, 1);
+    for (let i = 1; i < BUILDINGS_DB.length; i++) {
+        BUILDINGS_DB[i].baseProd = BUILDINGS_DB[i - 1].baseProd * 10 * milestoneAt10;
+    }
+})();
 
 /* ------------------------------------------------------------
    SKILLS (Forschungspunkte / FP)
@@ -318,7 +339,7 @@ const HINTS = [
     },
     {
         id: 'h_prestige', title: 'Reboot lohnt sich',
-        text: 'Du kannst jetzt Forschungspunkte holen. Ein Reboot loescht Energie und Hardware – die Punkte bleiben dauerhaft und machen den naechsten Durchlauf deutlich schneller.',
+        text: 'Du kannst jetzt Forschungspunkte holen. Ein Reboot loescht Energie und Hardware – die Punkte bleiben dauerhaft. Jeder je verdiente FP erhoeht ausserdem deine gesamte Produktion um 1%, der Wiederaufbau geht also deutlich schneller als der erste Durchlauf.',
         check: (s, api) => api.pendingFP > 0 && s.prestigeCount === 0
     },
     {
@@ -616,6 +637,7 @@ const CONFIG = {
     tickMaxCatchUpMs: 6 * 3600 * 1000, // max. Delta pro Tick (6h) als Schutz vor Ausreissern; laengere Pausen laufen ueber applyOfflineProgress
     autosaveInterval: 10000,       // ms
     fpDivisor: 4000000,              // FP = sqrt(lifetime / fpDivisor)
+    fpProductionPerPoint: 0.01,      // +1% Produktion je insgesamt verdientem FP (linear, siehe getFPMultiplier)
     metaUnlockFP: 10000,             // ab so vielen je verdienten FP wird die 2. Ebene sichtbar
     metaDivisor: 400,              // DK = sqrt(totalFPEarned / metaDivisor)
     clickEpsShare: 0.05,           // Klick = 1 + 5% der EPS

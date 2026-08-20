@@ -8,6 +8,8 @@ const UI = (function () {
     'use strict';
 
     const fmt = Engine.formatNumber;
+    // Multiplikatoren lesen sich klein genauer (x1.25), gross kompakter (x12.3k)
+    const fmtMult = m => (m < 1000 ? m.toFixed(2) : fmt(m));
     let buyAmount = 1;            // 1 | 10 | 100 | 'max'
     let breakdownOpen = false;
     let renderedUnlocked = -1;    // wie viele Gebaeude beim letzten Render sichtbar waren
@@ -347,6 +349,13 @@ const UI = (function () {
         const pending = Engine.calculatePendingFP();
         $('pending-fp-display').textContent = fmt(pending);
         $('ascension-btn').disabled = pending <= 0;
+
+        // Dauerbonus aus verdienten FP – und was der naechste Reboot daraus macht
+        const fpMult = Engine.getFPMultiplier();
+        $('fp-mult-display').textContent = fmtMult(fpMult);
+        $('fp-mult-next').textContent = pending > 0
+            ? '→ x' + fmtMult(Engine.getFPMultiplier(st.stats.totalFPEarned + pending))
+            : '';
 
         // Meta-Prestige
         const metaBox = $('meta-section');
