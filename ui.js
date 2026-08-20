@@ -8,8 +8,7 @@ const UI = (function () {
     'use strict';
 
     const fmt = Engine.formatNumber;
-    // Multiplikatoren lesen sich klein genauer (x1.25), gross kompakter (x12.3k)
-    const fmtMult = m => (m < 1000 ? m.toFixed(2) : fmt(m));
+    const fmtMult = Num.mult;
     let buyAmount = 1;            // 1 | 10 | 100 | 'max'
     let breakdownOpen = false;
     let renderedUnlocked = -1;    // wie viele Gebaeude beim letzten Render sichtbar waren
@@ -349,6 +348,16 @@ const UI = (function () {
         const pending = Engine.calculatePendingFP();
         $('pending-fp-display').textContent = fmt(pending);
         $('ascension-btn').disabled = pending <= 0;
+
+        // Reboot-Empfehlung: konkrete Zahl statt 'irgendwann mal'
+        const advice = Engine.getPrestigeAdvice();
+        const adviceEl = $('prestige-advice');
+        adviceEl.textContent = advice.text;
+        adviceEl.className = 'text-[10px] leading-snug mb-2 relative z-10 rounded-lg px-2.5 py-2 border ' +
+            (advice.ready ? 'text-emerald-300 bg-emerald-900/25 border-emerald-700/50'
+                          : 'text-slate-400 bg-slate-900/40 border-slate-700/50');
+        $('ascension-btn').classList.toggle('ring-2', advice.ready);
+        $('ascension-btn').classList.toggle('ring-emerald-400', advice.ready);
 
         // Dauerbonus aus verdienten FP – und was der naechste Reboot daraus macht
         const fpMult = Engine.getFPMultiplier();

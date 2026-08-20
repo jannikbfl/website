@@ -1,16 +1,20 @@
 /* ============================================================
    Energy Grid Tycoon – balance-sim.js
    ------------------------------------------------------------
-   Balancing-Verifikation. Laedt data.js und engine.js unveraendert
-   und spielt das Spiel beschleunigt durch. Es wird also die echte
-   Spiellogik getestet, keine Nachbildung – wenn du in data.js eine
-   Zahl aenderst, aendert sich hier sofort das Ergebnis.
+   Balancing-Verifikation. Laedt numbers.js, data.js und engine.js
+   unveraendert und spielt das Spiel beschleunigt durch. Es wird also
+   die echte Spiellogik getestet, keine Nachbildung – wenn du in
+   data.js eine Zahl aenderst, aendert sich hier sofort das Ergebnis.
 
    Aufruf:
      node balance-sim.js                    (Standard: 24 h, aktiver Spieler)
      node balance-sim.js 72                 (72 Stunden simulieren)
      node balance-sim.js 24 idle            (ohne Klicken, nur passiv)
      node balance-sim.js 24 aktiv 5         (5 Klicks pro Sekunde)
+
+   Ohne Node-Installation tut simrun.html im Browser denselben
+   Dienst – dort lassen sich die Balancing-Werte zusaetzlich per
+   Query-Parameter durchprobieren (siehe pflichtenheft.md, Kap. 7).
 
    Diese Datei gehoert NICHT auf den Webserver – sie ist ein
    reines Entwickler-Werkzeug und wird von game.html nicht geladen.
@@ -52,12 +56,13 @@ global.Date = class extends RealDate {
    im Modul-Scope von Node sichtbar werden, haengen wir eine kleine
    Export-Zeile an und werten alles in einem Rutsch aus. */
 const dir = __dirname;
-const src = ['data.js', 'engine.js']
+const src = ['numbers.js', 'data.js', 'engine.js']
     .map(f => fs.readFileSync(path.join(dir, f), 'utf8'))
     .join('\n');
 
 const exportLine = `
     globalThis.Engine = Engine;
+    globalThis.Num = Num;
     globalThis.BUILDINGS_DB = BUILDINGS_DB;
     globalThis.BUILDING_MILESTONES = BUILDING_MILESTONES;
     globalThis.SKILLS_DB = SKILLS_DB;
@@ -191,9 +196,9 @@ for (let i = 0; i < totalTicks; i++) {
 
     // Prestige, sobald es sich deutlich lohnt
     if (i % Math.max(1, Math.round(10000 / TICK)) === 0) {
-        const pending = Engine.calculatePendingFP();
-        const held = Engine.state.stats.totalFPEarned;
-        if (pending > 0 && (held === 0 ? pending >= 5 : pending >= held * 0.5)) {
+        // Der simulierte Spieler folgt der Reboot-Empfehlung des Spiels,
+        // damit Simulation und angezeigter Rat dieselbe Regel benutzen.
+        if (Engine.getPrestigeAdvice().ready) {
             const res = Engine.doPrestige();
             if (res) {
                 lastPrestige++;

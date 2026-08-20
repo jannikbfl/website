@@ -145,6 +145,8 @@
                     </div>
                 </div>
 
+                <div id="prestige-advice" class="text-[10px] leading-snug mb-2 relative z-10 rounded-lg px-2.5 py-2 border"></div>
+
                 <div class="flex justify-between items-center gap-2 text-[10px] mb-3 relative z-10 bg-slate-900/40 rounded-lg px-2.5 py-2">
                     <span class="text-slate-400">Produktionsbonus aus verdienten FP</span>
                     <span class="font-mono font-bold text-purple-300 shrink-0">x<span id="fp-mult-display">1.00</span><span id="fp-mult-next" class="text-emerald-400 ml-1"></span></span>
@@ -162,7 +164,7 @@
             <div id="meta-section" class="hidden bg-slate-800 rounded-2xl border border-amber-700/50 p-6 shadow-xl relative overflow-hidden">
                 <div class="absolute inset-0 bg-gradient-to-br from-amber-900/20 to-slate-900 pointer-events-none"></div>
                 <h2 class="text-lg font-bold text-amber-400 mb-2 relative z-10">Dyson-Kollaps</h2>
-                <p class="text-xs text-slate-400 mb-4 relative z-10">Die zweite Ebene: Setzt auch Forschungspunkte zurueck, gibt dafuer Dyson-Kerne, die alles ueberdauern.</p>
+                <p class="text-xs text-slate-400 mb-4 relative z-10">Die zweite Ebene: Setzt auch Forschungspunkte zurueck, gibt dafuer Dyson-Kerne, die alles ueberdauern. Kern-Echo rettet einen Teil der Forschung ueber den Kollaps.</p>
 
                 <div class="flex justify-between items-end mb-4 relative z-10">
                     <div>
@@ -287,6 +289,7 @@
     </div>
 
     <!-- ============ SCRIPTS: Ladereihenfolge data → engine → ui ============ -->
+    <script src="numbers.js"></script>
     <script src="data.js"></script>
     <script src="engine.js"></script>
     <script src="scene.js"></script>

@@ -1,7 +1,12 @@
 /* ============================================================
    Energy Grid Tycoon – data.js
-   Reine Datenstrukturen. Keine Logik, keine DOM-Zugriffe.
+   Datenstrukturen und Balancing-Konstanten. Kein DOM, keine
+   Spiellogik – einzige Ausnahme sind die beiden abgeleiteten
+   Kurven (Produktion und Kosten der Hardware-Stufen), die weiter
+   unten aus je einer Regel berechnet werden, damit achtzehn Stufen
+   nicht einzeln von Hand gepflegt werden muessen.
    Neue Inhalte werden ausschliesslich hier ergaenzt.
+   Doku und Formeln: pflichtenheft.md
    ============================================================ */
 
 /* ------------------------------------------------------------
@@ -18,75 +23,134 @@ const ICONS = {
     trading: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-6 4 4 5-8"/><path d="M17 7h4v4"/><path d="M3 21h18"/></svg>`,
     vpp: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2.5"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="18" r="2"/><path d="M6.7 7.3l3.6 3.6M17.3 7.3l-3.6 3.6M6.7 16.7l3.6-3.6M17.3 16.7l-3.6-3.6"/></svg>`,
     fusion: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><ellipse cx="12" cy="12" rx="9" ry="4"/><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(60 12 12)"/><ellipse cx="12" cy="12" rx="9" ry="4" transform="rotate(120 12 12)"/></svg>`,
-    dyson: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><path d="M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"/></svg>`
+    dyson: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/><path d="M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/><circle cx="12" cy="12" r="9" stroke-dasharray="2 3"/></svg>`,
+    windmini: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12V21M8 21h8"/><path d="M12 12L12 4M12 12l7 4M12 12l-7 4"/><circle cx="12" cy="12" r="1.6"/></svg>`,
+    roofarray: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l5-5 5 5M11 13l5-4 5 4"/><rect x="4" y="11" width="8" height="7"/><rect x="13" y="13" width="7" height="5"/><path d="M2 18h20"/></svg>`,
+    substation: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 21V7l6-4 6 4v14"/><path d="M4 21h16"/><path d="M9 21v-5h6v5"/><path d="M12 7.5l-1.5 3h3L12 13.5"/></svg>`,
+    hvdc: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V5M19 21V5"/><path d="M3 5h4M17 5h4"/><path d="M5 8c4 3 10 3 14 0M5 12c4 3 10 3 14 0"/><path d="M11 15h2"/></svg>`,
+    geothermal: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13h18"/><path d="M12 13v8"/><path d="M8 21h8"/><path d="M9 9c0-2 3-2.5 3-6 0 3.5 3 4 3 6a3 3 0 01-6 0z"/></svg>`,
+    tokamak: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="6"/><ellipse cx="12" cy="12" rx="4" ry="2.5"/><path d="M12 6v1.5M12 16.5V18M3 12h2M19 12h2"/></svg>`,
+    orbital: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="4" width="6" height="8" rx="1"/><path d="M3 5h5v6H3zM16 5h5v6h-5z"/><path d="M12 12v4"/><path d="M9 20l3-4 3 4"/></svg>`,
+    starlifter: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="7" cy="12" r="4"/><path d="M11 9.5c4-2 7-1 9 1M11 14.5c4 2 7 1 9-1"/><path d="M20 7v4h-4"/><path d="M20 17v-4h-4"/></svg>`
 };
 
 /* ------------------------------------------------------------
-   GEBAEUDE
-   costFactor variiert bewusst pro Tier: fruehe Hardware skaliert
-   flacher (schnelles Anfangs-Pacing), spaete Hardware steiler
-   (laengere Zielkurve im Endgame).
+   GEBAEUDE – 18 Stufen, drei pro Aera (die letzte hat eine).
+   Nur die erste Stufe traegt eigene Zahlen; baseProd und baseCost
+   aller weiteren Stufen werden weiter unten aus zwei Regeln
+   abgeleitet (siehe "PRODUKTIONS- UND KOSTENKURVE").
+   costFactor steigt nach hinten leicht an: fruehe Hardware
+   skaliert flacher (schnelles Anfangs-Pacing), spaete Hardware
+   steiler (laengere Zielkurve im Endgame).
    ------------------------------------------------------------ */
 const BUILDINGS_DB = [
     {
         id: 'panel', name: 'Balkon-Panel', icon: ICONS.panel,
         desc: 'Grundlegendes Solar-Panel fuer den Balkon.',
-        baseCost: 60, baseProd: 1, costFactor: 1.14, era: 0,
+        baseCost: 60, baseProd: 1, costFactor: 1.15, era: 0,
         flavor: 'Zwei Schrauben, ein Kabel, viel Hoffnung.'
     },
     {
         id: 'inverter', name: 'Wechselrichter', icon: ICONS.inverter,
         desc: 'Verbessert die Einspeisung ins Heimnetz.',
-        baseCost: 1416, costFactor: 1.14, era: 0,
+        costFactor: 1.15, era: 0,
         flavor: 'Gleichstrom rein, Wechselstrom raus. Endlich zaehlt der Zaehler rueckwaerts.'
+    },
+    {
+        id: 'windmini', name: 'Mini-Windrad', icon: ICONS.windmini,
+        desc: 'Vertikalrotor auf dem Garagendach - laeuft auch nachts.',
+        costFactor: 1.15, era: 0,
+        flavor: 'Der Nachbar findet das Geraeusch "interessant". Das ist kein Lob.'
     },
     {
         id: 'smartmeter', name: 'Smart Meter API', icon: ICONS.smartmeter,
         desc: 'Automatisierte Auslesung & Last-Verteilung.',
-        baseCost: 31329, costFactor: 1.15, era: 1,
+        costFactor: 1.155, era: 1,
         flavor: 'Der Zaehler spricht jetzt JSON. Der Netzbetreiber findet das mittelspannend.'
     },
     {
         id: 'battery', name: 'Heimspeicher-Rack', icon: ICONS.battery,
         desc: 'LiFePO4 Speicher puffert die Produktion.',
-        baseCost: 770171, costFactor: 1.15, era: 1,
+        costFactor: 1.155, era: 1,
         flavor: 'Sonne von mittags, Kaffee um Mitternacht.'
+    },
+    {
+        id: 'roofarray', name: 'Dachflaechen-Verbund', icon: ICONS.roofarray,
+        desc: 'Gepachtete Daecher der Nachbarschaft, ein gemeinsamer Zaehler.',
+        costFactor: 1.155, era: 1,
+        flavor: 'Fuenf Haushalte, ein Vertrag, ein Pachtzins in Kilowattstunden.'
     },
     {
         id: 'fpga', name: 'FPGA Grid-Steuerung', icon: ICONS.fpga,
         desc: 'Hardware-nahe Echtzeit-Steuerung des Netzes.',
-        baseCost: 20448047, costFactor: 1.15, era: 2,
+        costFactor: 1.16, era: 2,
         flavor: 'Ab hier reagiert das Netz schneller, als du blinzeln kannst.'
+    },
+    {
+        id: 'substation', name: 'Ortsnetz-Station', icon: ICONS.substation,
+        desc: 'Eigene Trafostation am Ende der Strasse.',
+        costFactor: 1.16, era: 2,
+        flavor: 'Ein Betonwuerfel mit Warnschild und Summton. Deiner.'
     },
     {
         id: 'riscv', name: 'RISC-V Coprozessor', icon: ICONS.riscv,
         desc: 'KI-gestuetzte Vorhersage der Sonnenzyklen.',
-        baseCost: 536193224, costFactor: 1.16, era: 2,
+        costFactor: 1.16, era: 2,
         flavor: 'Offene Architektur, geschlossener Regelkreis.'
     },
     {
         id: 'trading', name: 'Python Stromhandel', icon: ICONS.trading,
         desc: 'Automatisierter Hochfrequenzhandel an der Stromboerse.',
-        baseCost: 13840487601, costFactor: 1.16, era: 3,
+        costFactor: 1.165, era: 3,
         flavor: 'Der Bot kauft nachts billig und verkauft mittags teuer. Du schlaefst.'
+    },
+    {
+        id: 'hvdc', name: 'HGUE-Trasse', icon: ICONS.hvdc,
+        desc: 'Hochspannungs-Gleichstrom quer durchs Land, kaum Verluste.',
+        costFactor: 1.165, era: 3,
+        flavor: 'Zwei Jahre Genehmigung, zwei Wochen Bau, zwei Millisekunden Latenz.'
     },
     {
         id: 'vpp', name: 'Virtuelles Kraftwerk', icon: ICONS.vpp,
         desc: 'Buendelt tausende Heimspeicher zu einem Schwarm.',
-        baseCost: 326635507382, costFactor: 1.16, era: 3,
-        flavor: 'Kein einziges Kraftwerk gebaut – und trotzdem eins.'
+        costFactor: 1.165, era: 3,
+        flavor: 'Kein einziges Kraftwerk gebaut - und trotzdem eins.'
+    },
+    {
+        id: 'geothermal', name: 'Tiefengeothermie', icon: ICONS.geothermal,
+        desc: 'Bohrung auf 5.000 Meter. Waerme rund um die Uhr.',
+        costFactor: 1.17, era: 4,
+        flavor: 'Der einzige Teil deines Netzes, dem das Wetter egal ist.'
     },
     {
         id: 'fusion', name: 'Fusions-Testreaktor', icon: ICONS.fusion,
         desc: 'Experimenteller Reaktor im ehemaligen Gartenhaus.',
-        baseCost: 8259212115243, costFactor: 1.17, era: 4,
+        costFactor: 1.17, era: 4,
         flavor: 'Die Baugenehmigung war ueberraschend unkompliziert.'
+    },
+    {
+        id: 'tokamak', name: 'Fusions-Serienpark', icon: ICONS.tokamak,
+        desc: 'Reaktoren von der Stange, in Reihe geschaltet.',
+        costFactor: 1.17, era: 4,
+        flavor: 'Aus dem Prototypen ist ein Katalogartikel geworden.'
+    },
+    {
+        id: 'orbital', name: 'Orbital-Solarsegel', icon: ICONS.orbital,
+        desc: 'Kilometergrosse Segel im Orbit, Downlink per Mikrowelle.',
+        costFactor: 1.175, era: 5,
+        flavor: 'Die Flugsicherung hat aufgehoert, nach Details zu fragen.'
     },
     {
         id: 'dyson', name: 'Dyson-Schwarm', icon: ICONS.dyson,
         desc: 'Satelliten-Netzwerk im Sonnenorbit.',
-        baseCost: 213190912724712, costFactor: 1.17, era: 5,
+        costFactor: 1.175, era: 5,
         flavor: 'Es fing mit einem Balkon-Panel an.'
+    },
+    {
+        id: 'starlifter', name: 'Stern-Heber', icon: ICONS.starlifter,
+        desc: 'Magnetische Abschoepfung der Sonnenkorona.',
+        costFactor: 1.18, era: 6,
+        flavor: 'Du tankst jetzt direkt an der Quelle. Die Quelle hat nicht zugestimmt.'
     }
 ];
 
@@ -114,23 +178,50 @@ const BUILDING_MILESTONES = [
 ];
 
 /* ------------------------------------------------------------
-   PRODUKTIONS-KURVE DER HARDWARE-STUFEN
-   Regel: Ein einzelnes Stueck einer neuen Stufe erzeugt genau so
-   viel wie zehn Stueck der Stufe davor – inklusive deren Mengen-
-   Meilensteinen bei 5 und 10. Der Umstieg auf ein neues Tier ist
-   damit immer ein Sprung nach vorn und nie ein Rueckschritt.
+   PRODUKTIONS- UND KOSTENKURVE DER HARDWARE-STUFEN
 
-   Nur das Balkon-Panel traegt einen eigenen Wert (baseProd: 1),
-   alles darueber wird hier abgeleitet. Wer die Kurve aendern will,
-   dreht an den Meilenstein-Faktoren oder an dieser Regel – nicht
-   an zehn einzeln gepflegten Zahlen.
+   Zwei Regeln erzeugen die komplette Leiter aus den Werten der
+   ersten Stufe. Wer das Tempo des Spiels aendern will, dreht
+   genau hier – nicht an achtzehn einzeln gepflegten Zahlen.
+
+   1) PRODUKTION: Ein einzelnes Stueck einer neuen Stufe erzeugt
+      so viel wie zehn Stueck der Stufe davor, inklusive deren
+      Mengen-Meilensteinen bei 5 und 10 (Faktor 40 pro Stufe).
+      Der Umstieg ist damit immer ein Sprung und nie ein
+      Rueckschritt.
+
+   2) KOSTEN: Eine neue Stufe kostet das TIER_COST_RATIO-fache
+      der vorherigen. Dieser Wert ist die zentrale Tempo-Schraube:
+
+        = 40  jede Stufe ist gleich effizient wie die davor,
+              das Spiel beschleunigt sich unbegrenzt
+        > 40  jede Stufe ist etwas teurer erkauft, die Kurve
+              bremst sich selbst – je groesser, desto langsamer
+
+      Bei 150 ist eine neue Stufe rund 3,8-mal weniger effizient
+      als die vorherige bei einem Stueck. Genau diese Luecke
+      schliesst man ueber Mengen-Meilensteine, Forschung und
+      Reboots – das ist die eigentliche Spielschleife.
    ------------------------------------------------------------ */
-(function deriveBuildingProduction() {
+const TIER_PROD_RATIO_UNITS = 10;   // "so viel wie zehn Stueck der Vorstufe"
+const TIER_COST_RATIO = 150;        // Tempo-Schraube, siehe oben
+
+(function deriveBuildingCurve() {
     const milestoneAt10 = BUILDING_MILESTONES
-        .filter(m => m.count <= 10)
+        .filter(m => m.count <= TIER_PROD_RATIO_UNITS)
         .reduce((f, m) => f * m.mult, 1);
+    const prodRatio = TIER_PROD_RATIO_UNITS * milestoneAt10;
+
+    // Auf drei signifikante Stellen runden: die Preise sollen im Spiel
+    // wie gewachsene Zahlen aussehen, nicht wie Zehnerpotenzen.
+    const round3 = n => {
+        const mag = Math.pow(10, Math.floor(Math.log10(n)) - 2);
+        return Math.round(n / mag) * mag;
+    };
+
     for (let i = 1; i < BUILDINGS_DB.length; i++) {
-        BUILDINGS_DB[i].baseProd = BUILDINGS_DB[i - 1].baseProd * 10 * milestoneAt10;
+        BUILDINGS_DB[i].baseProd = BUILDINGS_DB[i - 1].baseProd * prodRatio;
+        BUILDINGS_DB[i].baseCost = round3(BUILDINGS_DB[i - 1].baseCost * TIER_COST_RATIO);
     }
 })();
 
@@ -176,18 +267,23 @@ const SKILLS_DB = [
 const META_SKILLS_DB = [
     {
         id: 'core_output', name: 'Kern-Resonanz',
-        desc: '+50% Gesamtproduktion pro Level. Ueberdauert jeden Reboot.',
-        costFactor: 1.8, baseCost: 1, maxLevel: 20
+        desc: 'Verdoppelt die Gesamtproduktion pro Level. Multiplikativ und dauerhaft.',
+        costFactor: 1.9, baseCost: 1, maxLevel: 12
     },
     {
         id: 'core_research', name: 'Forschungs-Katalysator',
-        desc: '+25% Forschungspunkte pro Reboot und Level.',
-        costFactor: 2.0, baseCost: 2, maxLevel: 15
+        desc: '+50% Forschungspunkte pro Reboot und Level.',
+        costFactor: 2.1, baseCost: 2, maxLevel: 10
+    },
+    {
+        id: 'core_echo', name: 'Kern-Echo',
+        desc: 'Behaelt 15% der verdienten Forschungspunkte pro Level ueber den Dyson-Kollaps hinaus – samt ihres Produktionsbonus.',
+        costFactor: 2.4, baseCost: 3, maxLevel: 5
     },
     {
         id: 'core_start', name: 'Notfall-Backup',
-        desc: 'Startet nach jedem Reboot mit 10 Balkon-Panels pro Level.',
-        costFactor: 2.5, baseCost: 2, maxLevel: 10
+        desc: 'Startet nach jedem Reboot mit 25 Stueck der ersten Hardware-Stufe pro Level – inklusive deren Mengen-Meilensteinen.',
+        costFactor: 2.2, baseCost: 2, maxLevel: 8
     }
 ];
 
@@ -340,7 +436,7 @@ const HINTS = [
     {
         id: 'h_prestige', title: 'Reboot lohnt sich',
         text: 'Du kannst jetzt Forschungspunkte holen. Ein Reboot loescht Energie und Hardware – die Punkte bleiben dauerhaft. Jeder je verdiente FP erhoeht ausserdem deine gesamte Produktion um 1%, der Wiederaufbau geht also deutlich schneller als der erste Durchlauf.',
-        check: (s, api) => api.pendingFP > 0 && s.prestigeCount === 0
+        check: (s, api) => api.pendingFP >= CONFIG.firstPrestigeFP && s.prestigeCount === 0
     },
     {
         id: 'h_skills', title: 'Forschung ausgeben',
@@ -359,7 +455,7 @@ const HINTS = [
     },
     {
         id: 'h_meta', title: 'Zweite Ebene',
-        text: 'Dyson-Kerne setzen sogar deine Forschungspunkte zurueck – geben dafuer aber Boni, die jeden Reboot ueberdauern. Erst machen, wenn dir Forschung allein zu langsam wird.',
+        text: 'Dyson-Kerne setzen sogar deine Forschungspunkte zurueck – geben dafuer aber Boni, die jeden Reboot ueberdauern. Kern-Resonanz verdoppelt deine Produktion pro Level, Kern-Echo rettet einen Teil der Forschung ueber den Kollaps. Kauf zuerst diese beiden.',
         check: (s, api) => api.metaUnlocked && s.stats.metaEarned === 0
     }
 ];
@@ -385,22 +481,22 @@ const ERAS = [
         story: 'Vierzehn Haushalte, ein Speicherkeller, eine Steuerungssoftware, die du selbst geschrieben hast. Der Netzbetreiber lockt dich mit einem Kooperationsvertrag.'
     },
     {
-        level: 3, fpRequired: 1000, name: 'Netz-Architekt',
+        level: 3, fpRequired: 800, name: 'Netz-Architekt',
         subtitle: 'Der Algorithmus handelt schneller als du denkst.',
         story: 'Deine Handelsbots bewegen Lasten zwischen Umspannwerken. Irgendwo in einem Rechenzentrum meldet sich eine Steuerungs-KI zum ersten Mal von selbst zu Wort.'
     },
     {
-        level: 4, fpRequired: 6000, name: 'Fusions-Pionier',
+        level: 4, fpRequired: 4000, name: 'Fusions-Pionier',
         subtitle: 'Das Gartenhaus ist jetzt ein Forschungsreaktor.',
         story: 'Was als Balkonprojekt begann, verbraucht inzwischen mehr Kuehlwasser als der lokale Schwimmverein. Niemand fragt mehr, ob das erlaubt ist.'
     },
     {
-        level: 5, fpRequired: 25000, name: 'Schwarm-Operator',
+        level: 5, fpRequired: 20000, name: 'Schwarm-Operator',
         subtitle: 'Die Sonne ist jetzt Infrastruktur.',
         story: 'Der erste Satellitenring steht. Von hier oben sieht dein alter Balkon aus wie ein Pixel – und produziert noch immer.'
     },
     {
-        level: 6, fpRequired: 80000, name: 'Stellarer Verwalter',
+        level: 6, fpRequired: 90000, name: 'Stellarer Verwalter',
         subtitle: 'Es gibt nichts mehr zu erweitern. Nur zu optimieren.',
         story: 'Der Schwarm ist geschlossen. Du verwaltest ein Energiesystem, das laenger laufen wird als du. Ein neuer Zyklus beginnt trotzdem.'
     }
@@ -636,10 +732,17 @@ const CONFIG = {
     tickRate: 100,                 // ms pro Game-Tick
     tickMaxCatchUpMs: 6 * 3600 * 1000, // max. Delta pro Tick (6h) als Schutz vor Ausreissern; laengere Pausen laufen ueber applyOfflineProgress
     autosaveInterval: 10000,       // ms
-    fpDivisor: 4000000,              // FP = sqrt(lifetime / fpDivisor)
+    // FP = fpScale * lifetimeEnergy ^ fpExponent. Ein Potenzgesetz statt
+    // Wurzel, weil die Energie ueber das ganze Spiel rund 37 Zehnerpotenzen
+    // durchlaeuft - eine Wurzel wuerde daraus achtstellige FP-Zahlen machen.
+    fpScale: 1.5,
+    fpExponent: 0.14,
     fpProductionPerPoint: 0.01,      // +1% Produktion je insgesamt verdientem FP (linear, siehe getFPMultiplier)
-    metaUnlockFP: 10000,             // ab so vielen je verdienten FP wird die 2. Ebene sichtbar
-    metaDivisor: 400,              // DK = sqrt(totalFPEarned / metaDivisor)
+    firstPrestigeFP: 25,             // ab hier empfiehlt das Spiel den allerersten Reboot
+    prestigeAdviceShare: 0.5,        // spaeter empfohlen, sobald ein Reboot die FP um diesen Anteil hebt
+    metaUnlockFP: 3000,              // ab so vielen je verdienten FP wird die 2. Ebene sichtbar
+    metaDivisor: 250,                // DK = sqrt(totalFPEarned / metaDivisor)
+    metaOutputPerLevel: 2,           // Faktor pro Level Kern-Resonanz (multiplikativ)
     clickEpsShare: 0.05,           // Klick = 1 + 5% der EPS
     goldenSunBase: 60,             // Sekunden Produktion pro goldener Sonne
     goldenSunPerLevel: 30,         // + pro Golden-Grid-Level

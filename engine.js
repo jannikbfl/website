@@ -296,7 +296,7 @@ const Engine = (function () {
 
     function getMultiplier() {
         let mult = 1 + ((state.skills.passive || 0) * 0.20);
-        mult *= 1 + ((state.metaSkills.core_output || 0) * 0.50);
+        mult *= Math.pow(CONFIG.metaOutputPerLevel, state.metaSkills.core_output || 0);
         mult *= getFPMultiplier();
         mult *= getBuffMultiplier('production');
         if (currentEvent && currentEvent.mult) mult *= currentEvent.mult;
@@ -306,7 +306,7 @@ const Engine = (function () {
     function getClickPower() {
         const base = 1 + (getBaseEPS() * CONFIG.clickEpsShare);
         let mult = 1 + ((state.skills.click || 0) * 1.0);
-        mult *= 1 + ((state.metaSkills.core_output || 0) * 0.50);
+        mult *= Math.pow(CONFIG.metaOutputPerLevel, state.metaSkills.core_output || 0);
         mult *= getFPMultiplier();
         mult *= getBuffMultiplier('click');
         if (currentEvent && currentEvent.mult) mult *= currentEvent.mult;
@@ -344,10 +344,40 @@ const Engine = (function () {
     }
 
     function calculatePendingFP() {
-        let calculated = Math.floor(Math.sqrt(state.lifetimeEnergy / CONFIG.fpDivisor));
-        calculated = Math.floor(calculated * (1 + ((state.metaSkills.core_research || 0) * 0.25)));
+        let calculated = Math.floor(CONFIG.fpScale * Math.pow(state.lifetimeEnergy, CONFIG.fpExponent));
+        calculated = Math.floor(calculated * (1 + ((state.metaSkills.core_research || 0) * 0.50)));
         const pending = calculated - state.stats.totalFPEarned;
         return pending > 0 ? pending : 0;
+    }
+
+    /**
+     * Wann lohnt sich ein Reboot? Ohne klare Ansage rebooten Spieler
+     * entweder viel zu frueh (bei 3 FP) oder gar nicht. Deshalb nennt
+     * das Spiel eine konkrete Zahl:
+     *   - vor dem ersten Reboot eine feste Schwelle (CONFIG.firstPrestigeFP)
+     *   - danach relativ: wenn der Reboot die Forschung um die Haelfte hebt
+     */
+    function getPrestigeAdvice() {
+        const pending = calculatePendingFP();
+        const earned = state.stats.totalFPEarned;
+        // Nach einem Dyson-Kollaps steht prestigeCount wieder auf 0, die per
+        // Kern-Echo behaltenen FP aber nicht – dann gilt trotzdem die relative Regel.
+        const first = state.prestigeCount === 0 && earned < CONFIG.firstPrestigeFP;
+        const target = first
+            ? CONFIG.firstPrestigeFP
+            : Math.max(1, Math.ceil(earned * CONFIG.prestigeAdviceShare));
+        const ready = pending >= target;
+        let text;
+        if (first) {
+            text = ready
+                ? 'Jetzt rebooten. Der erste Reboot ist der groesste Sprung im ganzen Spiel.'
+                : 'Erster Reboot empfohlen ab ' + target + ' FP – vorher verschenkst du ihn.';
+        } else {
+            text = ready
+                ? 'Reboot lohnt sich: +' + pending + ' FP auf ' + earned + ' bereits verdiente.'
+                : 'Naechster Reboot empfohlen ab ' + target + ' FP. Bis dahin weiter ausbauen.';
+        }
+        return { pending: pending, target: target, ready: ready, first: first, text: text };
     }
 
     function calculatePendingMeta() {
@@ -451,6 +481,19 @@ const Engine = (function () {
         return true;
     }
 
+    /**
+     * Notfall-Backup (Dyson-Kern-Skill): nach jedem Reset stehen die
+     * ersten Stufen sofort wieder da – mit 25 Stueck also inklusive der
+     * Mengen-Meilensteine bei 5, 10 und 25. Das nimmt dem Wiederaufbau
+     * die zaehe Anfangsphase, statt nur ein paar Panels zu schenken.
+     */
+    function applyEmergencyBackup() {
+        const tiers = state.metaSkills.core_start || 0;
+        for (let i = 0; i < tiers && i < BUILDINGS_DB.length; i++) {
+            state.buildings[BUILDINGS_DB[i].id] = 25;
+        }
+    }
+
     function doPrestige() {
         const pending = calculatePendingFP();
         if (pending <= 0) return null;
@@ -462,9 +505,7 @@ const Engine = (function () {
         state.energy = 0;
         BUILDINGS_DB.forEach(b => state.buildings[b.id] = 0);
 
-        // Notfall-Backup: Startkapital an Panels
-        const backup = (state.metaSkills.core_start || 0) * 10;
-        if (backup > 0) state.buildings.panel = backup;
+        applyEmergencyBackup();
 
         currentEvent = null;
         repairProgress = 0;
@@ -489,14 +530,17 @@ const Engine = (function () {
         state.stats.metaEarned += pending;
         state.energy = 0;
         state.lifetimeEnergy = 0;
-        state.prestigeTokens = 0;
         state.prestigeCount = 0;
-        state.stats.totalFPEarned = 0;
+        // Kern-Echo: ein Teil der Forschung ueberlebt den Kollaps. Ohne diesen
+        // Skill faellt mit den FP auch ihr Produktionsbonus komplett weg –
+        // genau das machte die zweite Ebene lange unattraktiv.
+        const kept = Math.floor(state.stats.totalFPEarned * 0.15 * (state.metaSkills.core_echo || 0));
+        state.stats.totalFPEarned = kept;
+        state.prestigeTokens = kept;
         BUILDINGS_DB.forEach(b => state.buildings[b.id] = 0);
         SKILLS_DB.forEach(s => state.skills[s.id] = 0);
 
-        const backup = (state.metaSkills.core_start || 0) * 10;
-        if (backup > 0) state.buildings.panel = backup;
+        applyEmergencyBackup();
 
         currentEvent = null;
         checkAchievements();
@@ -929,14 +973,14 @@ const Engine = (function () {
     /* ------------------------------------------------------------
        HILFSFUNKTION – auch von der UI genutzt
        ------------------------------------------------------------ */
+    /**
+     * Die eigentliche Formatierung liegt in numbers.js (Num). Der
+     * Alias bleibt bestehen, weil UI und Balance-Simulator ueber
+     * Engine.formatNumber gehen – und weil die Engine damit die
+     * einzige Stelle bleibt, die beide Module kennt.
+     */
     function formatNumber(num) {
-        if (!isFinite(num)) return '∞';
-        if (num < 1000) return Math.floor(num).toString();
-        const units = ['k', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No'];
-        let i = -1;
-        let n = num;
-        while (n >= 1000 && i < units.length - 1) { n /= 1000; i++; }
-        return n.toFixed(n < 10 ? 2 : 1) + units[i];
+        return Num.format(num);
     }
 
     /* ------------------------------------------------------------
@@ -992,6 +1036,7 @@ const Engine = (function () {
         getEra: getEra,
         getEraProgress: getEraProgress,
         calculatePendingFP: calculatePendingFP,
+        getPrestigeAdvice: getPrestigeAdvice,
         calculatePendingMeta: calculatePendingMeta,
         isMetaUnlocked: isMetaUnlocked,
         getCurrentEvent: function () { return currentEvent; },

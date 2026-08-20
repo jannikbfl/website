@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><title>Balance-Sim (Entwickler-Werkzeug)</title></head>
+<body style="background:#0f172a;color:#e2e8f0;font-family:monospace;font-size:12px">
+<pre id="out">laeuft...</pre>
+<script>
+/* Entwickler-Werkzeug: laedt die echte Engine und spielt sie
+   beschleunigt durch. Gehoert nicht in den Spielablauf, ist nirgends
+   verlinkt und traegt noindex.
+
+     simrun.html?h=168&cps=3
+
+   h   = simulierte Stunden          cps = Klicks pro Sekunde
+
+   Balancing-Werte lassen sich per Query ueberschreiben, ohne eine
+   Datei anzufassen:
+     tcr = TIER_COST_RATIO           cf  = costFactor aller Stufen
+     fps = CONFIG.fpScale            fpe = CONFIG.fpExponent
+     fpp = fpProductionPerPoint      co  = metaOutputPerLevel
+     md  = metaDivisor               mu  = metaUnlockFP
+     ms  = Faktor auf alle Meilenstein-Multiplikatoren
+
+   Ergebnis steht auf der Seite, in window.SIM_RESULT (Text) und in
+   window.SIM_DATA (Rohdaten). Siehe pflichtenheft.md, Kapitel 7. */
+localStorage.clear();
+var simNow = Date.now();
+var RealDate = Date;
+window.Date = class extends RealDate {
+    constructor() { super(arguments.length ? arguments[0] : simNow); }
+    static now() { return simNow; }
+};
+var scheduled = [];
+window.setInterval = function (fn, ms) { scheduled.push({ fn: fn, ms: ms, acc: 0 }); return scheduled.length; };
+window.setTimeout = function () { return 0; };
+</script>
+<script src="numbers.js"></script>
+<script src="data.js"></script>
+<script src="engine.js"></script>
+<script>
+(function () {
+    const q = new URLSearchParams(location.search);
+    const HOURS = parseFloat(q.get('h') || '168');
+    const CPS = parseFloat(q.get('cps') || '3');
+    const TICK = 1000;
+    CONFIG.tickRate = TICK;
+
+    // Balancing-Parameter per Query ueberschreiben, damit ein Durchlauf
+    // ohne Datei-Aenderung getestet werden kann.
+    const round3 = n => { const m = Math.pow(10, Math.floor(Math.log10(n)) - 2); return Math.round(n / m) * m; };
+    if (q.get('tcr')) { const R = +q.get('tcr'); for (let i = 1; i < BUILDINGS_DB.length; i++) BUILDINGS_DB[i].baseCost = round3(BUILDINGS_DB[i - 1].baseCost * R); }
+    if (q.get('cf')) { const c = +q.get('cf'); BUILDINGS_DB.forEach(b => b.costFactor = c); }
+    if (q.get('fps')) CONFIG.fpScale = +q.get('fps');
+    if (q.get('fpe')) CONFIG.fpExponent = +q.get('fpe');
+    if (q.get('fpp')) CONFIG.fpProductionPerPoint = +q.get('fpp');
+    if (q.get('co')) CONFIG.metaOutputPerLevel = +q.get('co');
+    if (q.get('md')) CONFIG.metaDivisor = +q.get('md');
+    if (q.get('mu')) CONFIG.metaUnlockFP = +q.get('mu');
+    if (q.get('ms')) { const s = +q.get('ms'); BUILDING_MILESTONES.forEach(m => m.mult = Math.max(1.1, m.mult * s)); }
+
+    const log = [];
+    const seenB = {}, seenEra = {};
+    const note = (h, t) => log.push(h.toFixed(2).padStart(8) + ' h  ' + t);
+
+    Engine.on('spawnsun', p => { if (Math.random() < 0.9) Engine.claimSun(p.type.id); });
+
+    function bestBuy() {
+        let best = null;
+        BUILDINGS_DB.forEach(b => {
+            const owned = Engine.state.buildings[b.id] || 0;
+            const cost = Engine.getBuildingCost(b.id, owned);
+            if (cost > Engine.state.energy) return;
+            const before = owned * b.baseProd * Engine.getMilestoneMultiplier(b.id, owned);
+            const after = (owned + 1) * b.baseProd * Engine.getMilestoneMultiplier(b.id, owned + 1);
+            const ratio = (after - before) / cost;
+            if (!best || ratio > best.ratio) best = { id: b.id, ratio: ratio, name: b.name };
+        });
+        return best;
+    }
+    function spendFP() {
+        const order = ['passive', 'offline', 'autoclick', 'click', 'luck', 'goldengrid'];
+        for (const id of order) {
+            const s = SKILLS_DB.find(x => x.id === id);
+            const lvl = Engine.state.skills[id] || 0;
+            if (s.maxLevel && lvl >= s.maxLevel) continue;
+            if (Engine.state.prestigeTokens >= Engine.getSkillCost(id, lvl)) { Engine.buySkill(id); return true; }
+        }
+        return false;
+    }
+    function spendSF() {
+        const order = ['sun_duration', 'sun_radar', 'sun_variants', 'sun_yield', 'sun_chain', 'sun_potency', 'sun_afterglow'];
+        for (const id of order) {
+            const s = SUN_SKILLS_DB.find(x => x.id === id);
+            const lvl = Engine.state.sunSkills[id] || 0;
+            if (s.maxLevel && lvl >= s.maxLevel) continue;
+            if (Engine.state.shards >= Engine.getSunSkillCost(id, lvl)) { Engine.buySunSkill(id); return true; }
+        }
+        return false;
+    }
+    function spendDK() {
+        const order = ['core_output', 'core_start', 'core_echo', 'core_research'];
+        for (const id of order) {
+            const s = META_SKILLS_DB.find(x => x.id === id);
+            const lvl = Engine.state.metaSkills[id] || 0;
+            if (s.maxLevel && lvl >= s.maxLevel) continue;
+            if (Engine.state.metaTokens >= Engine.getMetaSkillCost(id, lvl)) { Engine.buyMetaSkill(id); return true; }
+        }
+        return false;
+    }
+
+    Engine.init();
+    const total = Math.floor(HOURS * 3600 * 1000 / TICK);
+    let carry = 0;
+    for (let i = 0; i < total; i++) {
+        simNow += TICK;
+        for (let j = 0; j < scheduled.length; j++) {
+            const job = scheduled[j];
+            job.acc += TICK;
+            while (job.acc >= job.ms) { job.acc -= job.ms; try { job.fn(); } catch (e) {} }
+        }
+        carry += CPS * (TICK / 1000);
+        while (carry >= 1) { Engine.doClick(); carry -= 1; }
+
+        const h = i * TICK / 3600000;
+        if (i % 2 === 0) {
+            let buy;
+            while ((buy = bestBuy())) {
+                Engine.buyBuilding(buy.id, 1);
+                if (!seenB[buy.id]) { seenB[buy.id] = h; note(h, 'Hardware neu: ' + buy.name); }
+            }
+            while (spendFP()) {}
+            while (spendSF()) {}
+            while (spendDK()) {}
+        }
+        if (i % 10 === 0) {
+            if (Engine.getPrestigeAdvice().ready) {
+                const r = Engine.doPrestige();
+                if (r && r.eraChanged && !seenEra[r.era.name]) {
+                    seenEra[r.era.name] = h;
+                    note(h, 'AERA: ' + r.era.name + '  (FP gesamt ' + Engine.state.stats.totalFPEarned + ')');
+                }
+            }
+            const pm = Engine.calculatePendingMeta();
+            const me = Engine.state.stats.metaEarned;
+            if (pm > 0 && (me === 0 ? pm >= 3 : pm >= me * 0.5)) {
+                const r = Engine.doMetaPrestige();
+                if (r) note(h, 'DYSON-KOLLAPS: +' + r.dk + ' DK (gesamt ' + Engine.state.stats.metaEarned + ')');
+            }
+        }
+    }
+
+    const s = Engine.getStats();
+    const f = Engine.formatNumber;
+    let out = 'Sim ' + HOURS + 'h cps=' + CPS + ' tcr=' + (BUILDINGS_DB[1].baseCost / BUILDINGS_DB[0].baseCost).toFixed(0) + ' cf=' + BUILDINGS_DB[0].costFactor + ' fpS=' + CONFIG.fpScale + ' fpE=' + CONFIG.fpExponent + ' fpP=' + CONFIG.fpProductionPerPoint + ' co=' + CONFIG.metaOutputPerLevel + String.fromCharCode(10,10) + log.join(String.fromCharCode(10));
+    out += '\n\n--- Endstand ---';
+    out += '\n  Aera            ' + s.era.name + ' (Level ' + s.era.level + ')';
+    out += '\n  Gesamtenergie   ' + f(s.lifetimeEnergy);
+    out += '\n  Produktion      ' + f(s.currentEPS) + ' Wh/s';
+    out += '\n  Reboots         ' + s.prestigeCount;
+    out += '\n  FP verdient     ' + s.totalFPEarned + '  (Produktionsbonus x' + Engine.getFPMultiplier().toFixed(1) + ')';
+    out += '\n  Dyson-Kerne     ' + s.metaEarned;
+    out += '\n  Erfolge         ' + s.achievements + '/' + s.achievementsTotal;
+    out += '\n\n--- Hardware ---';
+    BUILDINGS_DB.forEach(b => {
+        const n = Engine.state.buildings[b.id] || 0;
+        out += '\n  ' + b.name.padEnd(22) + String(n).padStart(6) + '   erste um ' +
+               (seenB[b.id] !== undefined ? seenB[b.id].toFixed(2) + ' h' : 'NIE');
+    });
+    out += '\n\n--- Skills ---';
+    out += '\n  Forschung: ' + SKILLS_DB.map(x => x.name + ' ' + (Engine.state.skills[x.id] || 0)).join(', ');
+    out += '\n  Dyson:     ' + META_SKILLS_DB.map(x => x.name + ' ' + (Engine.state.metaSkills[x.id] || 0)).join(', ');
+    document.getElementById('out').textContent = out;
+    window.SIM_RESULT = out;
+    window.SIM_DATA = { tiers: seenB, eras: seenEra, fp: s.totalFPEarned, dk: s.metaEarned, era: s.era.level, eps: s.currentEPS, reboots: s.prestigeCount, energy: s.lifetimeEnergy };
+    localStorage.clear();
+})();
+</script></body></html>
