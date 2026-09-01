@@ -20,12 +20,20 @@
     var SEAT_NAMES = ['Sitz 1', 'Sitz 2', 'Sitz 3'];
 
     var PING_MS = 4000;        // Lebenszeichen innerhalb einer Runde
-    var MEMBER_TTL = 14000;    // danach gilt ein Mitspieler als abgesprungen
+    /* Die beiden Fristen sind bewusst lang: Browser drosseln die Timer in
+       Hintergrund-Tabs bis auf einen Lauf pro Minute. Ein wartender Mitspieler
+       sendet dann seltener - er ist aber nicht weg, und Zuege kommen weiterhin
+       sofort an, weil eingehende Nachrichten die Seite aufwecken. Zusaetzlich
+       setzt tick() die Fristen nach einer erkannten Drosselpause neu. */
+    var MEMBER_TTL = 90000;    // danach gilt ein Mitspieler als abgesprungen
     var STATE_BEAT_MS = 5000;  // Admin wiederholt den Zustand
-    var STATE_TIMEOUT = 16000; // so lange darf der Admin schweigen
+    var STATE_TIMEOUT = 90000; // so lange darf der Admin schweigen
+    var TICK_GAP_LIMIT = 5000; // groessere Luecke = der Tab wurde gedrosselt
     var ROULETTE_MS = 2600;    // Dauer der Auslosung
     var ROULETTE_HOLD = 1400;  // Nachlauf, bevor es losgeht
     var MANUAL_HOLD = 2200;
+    var CHAT_MAX_LINES = 120;  // aelteres faellt oben raus
+    var CHAT_MIN_GAP = 400;    // Bremse gegen versehentliches Dauerfeuer
 
     /* ---------------- kleine Helfer ---------------- */
 
@@ -156,6 +164,77 @@
         if (document.title !== t) document.title = t;
     }
 
+    /* ============================================================
+       CHAT
+       Zwei getrennte Kanaele: "lobby" laeuft ueber das Lobby-Topic und
+       erreicht alle, die die Seite offen haben; "room" laeuft ueber das
+       Aktions-Topic der Runde und damit nur die drei Mitspieler.
+       Nichts davon wird retained gesendet oder gespeichert - der Verlauf
+       lebt ausschliesslich im DOM dieser Seite.
+       ============================================================ */
+
+    var lastChatSent = 0;
+
+    function chatClear(kind, hint) {
+        var log = $('chat-' + kind + '-log');
+        if (!log) return;
+        log.textContent = '';
+        log.appendChild(el('p', 'chat-empty', hint || 'Noch keine Nachrichten.'));
+    }
+
+    function chatAppend(kind, name, text, seat, self) {
+        var log = $('chat-' + kind + '-log');
+        if (!log) return;
+
+        var hint = log.querySelector('.chat-empty');
+        if (hint) log.removeChild(hint);
+
+        // Nur mitscrollen, wenn man ohnehin unten steht - sonst reisst es
+        // einem beim Zurueckblaettern die Ansicht weg.
+        var atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
+
+        var line = el('div', 'chat-line' + (seat >= 0 ? ' seat-' + seat : '') + (self ? ' me' : ''));
+        line.appendChild(el('span', 'chat-name', name));
+        line.appendChild(document.createTextNode(' '));
+        line.appendChild(el('span', 'chat-text', text));
+        log.appendChild(line);
+
+        while (log.children.length > CHAT_MAX_LINES) log.removeChild(log.firstChild);
+        if (atBottom) log.scrollTop = log.scrollHeight;
+    }
+
+    function setupChat(kind) {
+        var form = $('chat-' + kind + '-form');
+        var input = $('chat-' + kind + '-input');
+        if (!form || !input) return;
+
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var text = Net.cleanText(input.value);
+            if (!text) { input.value = ''; return; }
+
+            var now = Date.now();
+            if (now - lastChatSent < CHAT_MIN_GAP) return;
+
+            var sent;
+            if (kind === 'lobby') sent = Net.publishLobby({ t: 'chat', text: text });
+            else sent = gs ? Net.publishAct(gs.room, { t: 'chat', text: text }) : false;
+
+            if (!sent) {
+                toast('Nachricht nicht verschickt – keine Verbindung.', 'warn');
+                return;
+            }
+            lastChatSent = now;
+            input.value = '';
+            // Angezeigt wird die Nachricht erst, wenn sie vom Broker
+            // zurueckkommt - so sehen alle dieselbe Reihenfolge.
+        });
+    }
+
+    function onLobbyChat(m) {
+        chatAppend('lobby', m.name, m.text, -1, m.from === me.id);
+    }
+
     /* ---------------- lokaler Zustand ---------------- */
 
     var me = { id: null, name: '' };
@@ -165,6 +244,7 @@
     var pending = {};     // nur beim Admin: offene Einladungen  id -> name
     var view = 'gate';
     var lastStateAt = 0;
+    var lastTickAt = 0;
     var seenScored = 0;   // wie viele Punktereihen wurden schon animiert
     var animatedPick = null;
     var rouletteTimer = null;
@@ -224,8 +304,18 @@
             else enableNotifications(true);
         });
 
-        // Wer wieder auf den Tab schaut, braucht die Meldung nicht mehr.
-        document.addEventListener('visibilitychange', function () { if (pageInView()) closeNote(); });
+        // Wer wieder auf den Tab schaut, braucht die Meldung nicht mehr - und
+        // die im Hintergrund gedrosselten Timer muessen wieder aufschliessen.
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) return;
+            closeNote();
+            grantGracePeriod(Date.now());
+            Net.resync();
+            if (gs) {
+                if (host) Net.publishState(gs.room, gs);
+                else Net.publishAct(gs.room, { t: 'ping' });
+            }
+        });
         global.addEventListener('focus', closeNote);
 
         $('gate-form').addEventListener('submit', function (e) {
@@ -259,6 +349,11 @@
 
         buildBoard();
 
+        setupChat('lobby');
+        setupChat('room');
+        chatClear('lobby', 'Noch keine Nachrichten. Schreib etwas – alle in der Lobby lesen mit.');
+        chatClear('room', 'Noch keine Nachrichten in dieser Runde.');
+
         global.addEventListener('beforeunload', function () {
             if (gs) {
                 var roomId = gs.room;
@@ -283,6 +378,7 @@
                 onPlayers: onPlayers,
                 onInvite: onInvite,
                 onInviteResult: onInviteResult,
+                onLobbyChat: onLobbyChat,
                 onState: onState,
                 onAct: onAct,
                 onBye: onBye
@@ -532,6 +628,18 @@
             toast('Die Runde ist bereits voll.', 'warn');
             return;
         }
+        // Chat lesen alle drei Mitspieler, nicht nur der Admin - deshalb vor
+        // der Rollenpruefung.
+        if (msg.t === 'chat') {
+            if (!gs || roomId !== gs.room || memberIndex(senderId) < 0) return;
+            var text = Net.cleanText(msg.text);
+            if (!text) return;
+            if (host) host.seen[senderId] = Date.now();
+            chatAppend('room', gs.players[memberIndex(senderId)].name, text,
+                       seatOf(senderId, gs), senderId === me.id);
+            return;
+        }
+
         if (!host || !gs || roomId !== gs.room) return;
         host.seen[senderId] = Date.now();
 
@@ -712,7 +820,11 @@
             return;
         }
 
-        if (st.room !== prevRoom) { seenScored = 0; animatedPick = null; }
+        if (st.room !== prevRoom) {
+            seenScored = 0;
+            animatedPick = null;
+            chatClear('room', 'Noch keine Nachrichten in dieser Runde.');
+        }
 
         if (st.phase === 'lobby') {
             setView('lobby');
@@ -1024,6 +1136,7 @@
         renderedTurn = null;
         closeNote();
         updateTitle();
+        chatClear('room', 'Noch keine Nachrichten in dieser Runde.');
         if (rouletteTimer) { clearTimeout(rouletteTimer); rouletteTimer = null; }
         show($('ov-pick'), false);
         show($('ov-result'), false);
@@ -1035,12 +1148,34 @@
     /* ---------------- Sekundentakt ---------------- */
 
     function tick() {
+        var now = Date.now();
+        var gap = lastTickAt ? now - lastTickAt : 0;
+        lastTickAt = now;
+
+        // War der Tab im Hintergrund, hat der Browser unsere Timer angehalten.
+        // Diese Pause darf niemandem als Verbindungsabbruch angelastet werden:
+        // Fristen neu starten und diesen Durchlauf ueberspringen.
+        if (gap > TICK_GAP_LIMIT) {
+            grantGracePeriod(now);
+            return;
+        }
+
         if (host) hostPrune();
 
         // Als Mitspieler merken, wenn der Admin nicht mehr sendet.
-        if (gs && !host && gs.phase !== 'over' && Date.now() - lastStateAt > STATE_TIMEOUT) {
+        if (gs && !host && gs.phase !== 'over' && now - lastStateAt > STATE_TIMEOUT) {
             toast('Kein Lebenszeichen vom Rundenadmin – Runde beendet.', 'warn');
             leaveLocally();
+        }
+    }
+
+    /* Alle Fristen so behandeln, als waeren gerade eben Lebenszeichen
+       eingetroffen - nach einer Drosselpause oder beim Zurueckkehren auf den Tab. */
+    function grantGracePeriod(now) {
+        lastStateAt = now;
+        lastTickAt = now;
+        if (host) {
+            for (var id in host.seen) host.seen[id] = now;
         }
     }
 

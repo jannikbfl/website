@@ -24,8 +24,15 @@
     var T_LOBBY = ROOT + '/lobby';
 
     var PRESENCE_MS = 4000;   // Heartbeat-Intervall
-    var PRESENCE_TTL = 14000; // danach gilt ein Spieler als weg
+    /* Grosszuegig, weil Browser die Timer in Hintergrund-Tabs auf einen Lauf
+       pro Minute drosseln - ein wartender Spieler darf deswegen nicht aus der
+       Liste fliegen. Wer die Seite wirklich schliesst, meldet sich ohnehin
+       sofort per Testament (Last Will) ab. */
+    var PRESENCE_TTL = 70000;
     var CONNECT_TIMEOUT = 9000;
+    /* Aus demselben Grund lang: mqtt.js sendet den Keepalive per Timer. Bei
+       25 s wuerde ein gedrosselter Tab vom Broker rausgeworfen. */
+    var KEEPALIVE = 90;
 
     var BROKERS = [
         { id: 'emqx', label: 'EMQX', url: 'wss://broker.emqx.io:8084/mqtt' },
@@ -55,6 +62,20 @@
         return v.split('').filter(function (ch) { var k = ch.charCodeAt(0); return k >= 32 && !(k >= 127 && k < 160); }).join('').trim().slice(0, 16);
     }
 
+    /* Chat-Text kommt ebenfalls von fremden Rechnern: Steuerzeichen raus
+       (damit keine Zeilenumbrueche das Log zerreissen) und hart begrenzen.
+       Ausgegeben wird ausschliesslich per textContent. */
+    function cleanText(v) {
+        if (typeof v !== 'string') return '';
+        var out = '';
+        for (var i = 0; i < v.length && out.length < 260; i++) {
+            var code = v.charCodeAt(i);
+            if (code < 32 || (code >= 127 && code < 160)) continue;
+            out += v.charAt(i);
+        }
+        return out.trim().slice(0, 200);
+    }
+
     function cleanId(v) {
         return (typeof v === 'string' && /^[A-Z0-9]{4,12}$/.test(v)) ? v : null;
     }
@@ -62,6 +83,7 @@
     var Net = {
         BROKERS: BROKERS,
         cleanName: cleanName,
+        cleanText: cleanText,
         randId: randId,
 
         client: null,
@@ -107,7 +129,7 @@
                 client = global.mqtt.connect(broker.url, {
                     clientId: 'ttt3d_' + this.me.id + '_' + randId(4),
                     clean: true,
-                    keepalive: 25,
+                    keepalive: KEEPALIVE,
                     reconnectPeriod: 3000,
                     connectTimeout: CONNECT_TIMEOUT,
                     will: will
@@ -248,6 +270,14 @@
             this.publishLobby({ t: 'presence', roomId: this.roomId });
         },
 
+        /* Nach einer Timer-Drosselung (Tab war im Hintergrund) wieder
+           aufschliessen: alle anderen antworten auf ein "hello" sofort. */
+        resync: function () {
+            if (!this.client || !this.client.connected) return;
+            this.publishLobby({ t: 'hello' });
+            this._sendPresence();
+        },
+
         _prune: function () {
             var now = Date.now(), changed = false;
             for (var id in this._players) {
@@ -318,6 +348,16 @@
             if (msg.t === 'invite-res' && msg.to === this.me.id) {
                 if (this._h.onInviteResult) {
                     this._h.onInviteResult({ from: senderId, name: name, ok: !!msg.ok, roomId: cleanId(msg.roomId) });
+                }
+                return;
+            }
+
+            /* Lobby-Chat. Bewusst ohne retain: wer spaeter dazukommt, sieht
+               den bisherigen Verlauf nicht - gespeichert wird nirgends etwas. */
+            if (msg.t === 'chat') {
+                var text = cleanText(msg.text);
+                if (text && this._h.onLobbyChat) {
+                    this._h.onLobbyChat({ from: senderId, name: name, text: text });
                 }
             }
         }

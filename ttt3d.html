@@ -86,7 +86,7 @@
         </section>
 
         <!-- ============ 2. LOBBY ============ -->
-        <section id="v-lobby" hidden class="grid md:grid-cols-5 gap-4">
+        <section id="v-lobby" hidden class="grid md:grid-cols-5 gap-4 items-start">
 
             <!-- Spielerliste -->
             <div class="md:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
@@ -104,8 +104,11 @@
                 </p>
             </div>
 
+            <!-- Rechte Spalte: Runde + Lobby-Chat -->
+            <div class="md:col-span-2 space-y-4">
+
             <!-- Runde / Matchmaking -->
-            <div class="md:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
                 <h2 class="font-bold text-white">Deine Runde</h2>
                 <p id="room-hint" class="text-slate-400 text-xs">
                     Lade jemanden aus der Lobby ein – damit eröffnest du automatisch eine Runde und wirst Rundenadmin.
@@ -124,6 +127,23 @@
                     <button id="btn-dissolve" class="btn danger" hidden>Auflösen</button>
                 </div>
                 <p id="room-role" class="text-xs text-slate-500"></p>
+            </div>
+
+            <!-- Lobby-Chat: sehen alle, die gerade auf der Seite sind -->
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-2">
+                <div class="flex items-baseline justify-between">
+                    <h2 class="font-bold text-white text-sm">Lobby-Chat</h2>
+                    <span class="text-[10px] text-slate-500">alle in der Lobby</span>
+                </div>
+                <div id="chat-lobby-log" class="ttt-chat-log"></div>
+                <form id="chat-lobby-form" class="flex gap-2" autocomplete="off">
+                    <label for="chat-lobby-input" class="sr-only">Nachricht an die Lobby</label>
+                    <input id="chat-lobby-input" type="text" maxlength="200" placeholder="Nachricht …"
+                           class="ttt-chat-input">
+                    <button type="submit" class="btn sm primary">Senden</button>
+                </form>
+            </div>
+
             </div>
 
             <!-- Regeln -->
@@ -155,10 +175,27 @@
 
             <div id="board-host" class="ttt-levels"></div>
 
-            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4">
-                <p class="font-semibold text-white text-sm mb-2">Punkte-Verlauf</p>
-                <div id="score-log" class="max-h-40 overflow-y-auto"></div>
-                <p id="score-log-empty" class="text-slate-500 text-xs py-3">Noch keine Dreierreihe geschlossen.</p>
+            <div class="grid lg:grid-cols-2 gap-4 items-start">
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4">
+                    <p class="font-semibold text-white text-sm mb-2">Punkte-Verlauf</p>
+                    <div id="score-log" class="max-h-40 overflow-y-auto"></div>
+                    <p id="score-log-empty" class="text-slate-500 text-xs py-3">Noch keine Dreierreihe geschlossen.</p>
+                </div>
+
+                <!-- Rundenchat: nur die drei Spieler dieser Runde -->
+                <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-2">
+                    <div class="flex items-baseline justify-between">
+                        <p class="font-semibold text-white text-sm">Rundenchat</p>
+                        <span class="text-[10px] text-slate-500">nur diese Runde</span>
+                    </div>
+                    <div id="chat-room-log" class="ttt-chat-log"></div>
+                    <form id="chat-room-form" class="flex gap-2" autocomplete="off">
+                        <label for="chat-room-input" class="sr-only">Nachricht an die Mitspieler</label>
+                        <input id="chat-room-input" type="text" maxlength="200" placeholder="Nachricht …"
+                               class="ttt-chat-input">
+                        <button type="submit" class="btn sm primary">Senden</button>
+                    </form>
+                </div>
             </div>
         </section>
 
