@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 160" width="320" height="160" role="img"
+     aria-label="TicTacToe 3D: drei uebereinander liegende Spielebenen mit Kreuz-, Kreis- und Dreieck-Symbolen">
+  <!-- Bewusst 2:1 und mittig aufgebaut: die Karte auf der Startseite schneidet
+       das Bild je nach Bildschirmbreite quadratisch oder breit zu. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#132038"/>
+      <stop offset="100%" stop-color="#080f1e"/>
+    </linearGradient>
+
+    <g id="plane">
+      <rect x="-36" y="-36" width="72" height="72" rx="3" fill="#16233d" stroke="#3b4d6b" stroke-width="2"/>
+      <path d="M-12 -36 V36 M12 -36 V36 M-36 -12 H36 M-36 12 H36"
+            stroke="#3b4d6b" stroke-width="1.4" fill="none"/>
+    </g>
+
+    <g id="mX" stroke="#38bdf8" stroke-width="4" stroke-linecap="round">
+      <line x1="-7" y1="-7" x2="7" y2="7"/>
+      <line x1="7" y1="-7" x2="-7" y2="7"/>
+    </g>
+    <circle id="mO" r="8" fill="none" stroke="#fbbf24" stroke-width="4"/>
+    <polygon id="mT" points="0,-9 8,7 -8,7" fill="none" stroke="#34d399" stroke-width="4" stroke-linejoin="round"/>
+  </defs>
+
+  <rect width="320" height="160" fill="url(#bg)"/>
+
+  <!-- dezente Randgrafik, darf beim Zuschneiden wegfallen -->
+  <g opacity="0.16" stroke-width="6">
+    <g transform="translate(46,52) scale(2.2)"><use href="#mX"/></g>
+    <g transform="translate(274,108) scale(2.2)"><use href="#mT"/></g>
+  </g>
+
+  <!-- untere Ebene -->
+  <g transform="translate(160,116) scale(1,0.55) rotate(45)">
+    <use href="#plane"/>
+    <use href="#mO" x="-24" y="24"/>
+    <use href="#mX" x="0" y="0"/>
+  </g>
+
+  <!-- mittlere Ebene -->
+  <g transform="translate(160,80) scale(1,0.55) rotate(45)">
+    <use href="#plane"/>
+    <use href="#mT" x="0" y="0"/>
+    <use href="#mX" x="24" y="-24"/>
+  </g>
+
+  <!-- obere Ebene -->
+  <g transform="translate(160,44) scale(1,0.55) rotate(45)">
+    <use href="#plane"/>
+    <use href="#mX" x="-24" y="-24"/>
+    <use href="#mO" x="24" y="24"/>
+  </g>
+</svg>

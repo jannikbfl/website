@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TicTacToe 3D – Multiplayer für 3 Spieler von Jannik Biefel</title>
+    <meta name="description" content="TicTacToe 3D: kostenloses Multiplayer-Browserspiel für drei Spieler über drei Ebenen. Lobby, Einladungen und Live-Spiel von mehreren PCs aus – ohne Anmeldung.">
+
+    <meta property="og:title" content="TicTacToe 3D – Multiplayer für 3 Spieler">
+    <meta property="og:description" content="Drei Ebenen, drei Spieler, 49 mögliche Dreierreihen. Kostenloses Multiplayer-Browserspiel von Jannik Biefel.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://biefel.de/ttt3d.html">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="canonical" href="https://biefel.de/ttt3d.html">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="ttt3d.css">
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen font-sans flex flex-col">
+
+    <!-- ============ KOPFZEILE ============ -->
+    <header class="bg-slate-800 border-b border-slate-700 px-3 py-2 flex items-center gap-2 z-30 shadow-md shrink-0">
+        <a href="index.html" class="text-xs font-bold text-slate-400 hover:text-white bg-slate-700/50 py-2 px-3 rounded-lg transition shrink-0">
+            &larr; Exit
+        </a>
+        <h1 class="text-sm md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400 shrink-0">
+            TicTacToe 3D
+        </h1>
+
+        <div class="flex-1 flex items-center justify-end gap-2 text-xs min-w-0">
+            <div class="flex items-center gap-2 bg-slate-900/60 rounded-lg px-2 py-1.5 border border-slate-700 min-w-0">
+                <span id="net-dot" class="w-2 h-2 rounded-full bg-slate-500 shrink-0"></span>
+                <span id="net-text" class="text-slate-400 truncate">nicht verbunden</span>
+            </div>
+            <select id="broker-select" title="Verbindungsserver – alle Mitspieler müssen denselben nutzen"
+                    class="bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-300 text-xs">
+            </select>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-5xl mx-auto px-3 py-4 md:py-6">
+
+        <!-- ============ 1. NICKNAME ============ -->
+        <section id="v-gate" class="max-w-md mx-auto mt-6">
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 space-y-5 shadow-xl">
+                <div>
+                    <h2 class="text-xl font-bold text-white">Wie heißt du?</h2>
+                    <p class="text-slate-400 text-sm mt-1">
+                        Dein Nickname wird allen Spielern in der Lobby angezeigt. Keine Anmeldung, keine E-Mail.
+                    </p>
+                </div>
+
+                <form id="gate-form" class="space-y-3" autocomplete="off">
+                    <input id="gate-name" type="text" maxlength="16" required
+                           placeholder="z. B. Jannik"
+                           class="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
+                    <p id="gate-error" class="text-rose-400 text-xs" hidden></p>
+                    <button type="submit" class="btn primary w-full py-3">Lobby betreten</button>
+                </form>
+
+                <div class="border-t border-slate-700 pt-4 text-xs text-slate-400 space-y-2">
+                    <p class="font-semibold text-slate-300">So läuft es ab</p>
+                    <ol class="list-decimal list-inside space-y-1">
+                        <li>Alle Spieler, die diese Seite offen haben, siehst du in der Lobby.</li>
+                        <li>Lade zwei davon ein – ihr seid zu dritt eine Runde.</li>
+                        <li>Der Rundenadmin bestimmt den Startspieler oder lost ihn aus.</li>
+                        <li>Gespielt wird über drei Ebenen, bis alle 27 Felder voll sind.</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============ 2. LOBBY ============ -->
+        <section id="v-lobby" hidden class="grid md:grid-cols-5 gap-4">
+
+            <!-- Spielerliste -->
+            <div class="md:col-span-3 bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
+                <div class="flex items-baseline justify-between">
+                    <h2 class="font-bold text-white">Lobby</h2>
+                    <span id="lobby-count" class="text-xs text-slate-500">0 online</span>
+                </div>
+                <p class="text-slate-400 text-xs">
+                    Alle, die gerade TicTacToe 3D geöffnet haben. Für eine Runde braucht ihr genau drei Spieler.
+                </p>
+                <div id="lobby-list" class="space-y-2"></div>
+                <p id="lobby-empty" class="text-slate-500 text-xs py-6 text-center" hidden>
+                    Außer dir ist gerade niemand da. Schick jemandem den Link
+                    <span class="text-slate-300">biefel.de/ttt3d.html</span> – ihr seht euch dann hier.
+                </p>
+            </div>
+
+            <!-- Runde / Matchmaking -->
+            <div class="md:col-span-2 bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3">
+                <h2 class="font-bold text-white">Deine Runde</h2>
+                <p id="room-hint" class="text-slate-400 text-xs">
+                    Lade jemanden aus der Lobby ein – damit eröffnest du automatisch eine Runde und wirst Rundenadmin.
+                </p>
+
+                <div id="room-code" class="text-xs text-slate-500" hidden>
+                    Rundencode <span id="room-code-value" class="font-mono font-bold text-slate-300"></span>
+                </div>
+
+                <div id="room-slots" class="space-y-2"></div>
+
+                <div id="room-pending" class="space-y-1"></div>
+
+                <div class="flex gap-2 pt-1">
+                    <button id="btn-start" class="btn gold flex-1" disabled>Spiel starten</button>
+                    <button id="btn-dissolve" class="btn danger" hidden>Auflösen</button>
+                </div>
+                <p id="room-role" class="text-xs text-slate-500"></p>
+            </div>
+
+            <!-- Regeln -->
+            <div class="md:col-span-5 bg-slate-800/60 border border-slate-700 rounded-2xl p-4 text-xs text-slate-400 space-y-2">
+                <p class="font-semibold text-slate-300 text-sm">Regeln</p>
+                <p>
+                    Gespielt wird auf drei nebeneinander liegenden Ebenen mit je 3&times;3 Feldern – zusammen
+                    27 Felder. Eine Dreierreihe beendet das Spiel <b class="text-slate-200">nicht</b>, sondern gibt
+                    einen Punkt. Gezählt werden alle 49 möglichen Dreierreihen: innerhalb einer Ebene, als Säule
+                    durch alle drei Ebenen sowie schräg durch den Würfel. Ein einzelner Zug kann mehrere Reihen
+                    gleichzeitig schließen und entsprechend mehrere Punkte bringen. Das Spiel endet, wenn alle
+                    27 Felder belegt sind. Es gewinnt, wer die meisten Punkte gesammelt hat.
+                </p>
+            </div>
+        </section>
+
+        <!-- ============ 3. SPIEL ============ -->
+        <section id="v-game" hidden class="space-y-4">
+
+            <div id="score-bar" class="grid grid-cols-1 sm:grid-cols-3 gap-2"></div>
+
+            <div class="flex items-center justify-between gap-3 flex-wrap">
+                <p id="turn-text" class="text-sm font-semibold text-slate-200"></p>
+                <div class="flex items-center gap-2">
+                    <span id="cells-left" class="text-xs text-slate-500"></span>
+                    <button id="btn-quit" class="btn sm danger">Runde verlassen</button>
+                </div>
+            </div>
+
+            <div id="board-host" class="ttt-levels"></div>
+
+            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4">
+                <p class="font-semibold text-white text-sm mb-2">Punkte-Verlauf</p>
+                <div id="score-log" class="max-h-40 overflow-y-auto"></div>
+                <p id="score-log-empty" class="text-slate-500 text-xs py-3">Noch keine Dreierreihe geschlossen.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="w-full max-w-5xl mx-auto px-3 py-8 text-center text-xs text-slate-500">
+        &copy; biefel.de &middot; <a href="index.html#minigames" class="hover:text-sky-400">Minigames</a>
+        &middot; <a href="impressum.html" class="hover:text-sky-400">Impressum</a>
+        &middot; <a href="datenschutz.html" class="hover:text-sky-400">Datenschutz</a>
+    </footer>
+
+    <!-- ============ OVERLAY: STARTSPIELER ============ -->
+    <div id="ov-pick" class="ttt-overlay" hidden>
+        <div class="ttt-card space-y-5 text-center">
+            <p id="pick-title" class="text-sm font-semibold text-slate-400 uppercase tracking-widest">Startspieler</p>
+            <div id="pick-name" class="roulette-name">&nbsp;</div>
+            <p id="pick-sub" class="text-slate-400 text-sm">&nbsp;</p>
+
+            <!-- nur der Rundenadmin sieht die Auswahl -->
+            <div id="pick-controls" class="space-y-2" hidden>
+                <div id="pick-buttons" class="grid gap-2"></div>
+                <button id="btn-random" class="btn primary w-full">&#127922; Zufällig auslosen</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ OVERLAY: ERGEBNIS ============ -->
+    <div id="ov-result" class="ttt-overlay" hidden>
+        <div class="ttt-card space-y-5 text-center">
+            <p class="text-sm font-semibold text-slate-400 uppercase tracking-widest">Endstand</p>
+            <div id="result-crown" class="text-5xl">&#127942;</div>
+            <div id="result-title" class="roulette-name settled"></div>
+            <div id="result-table" class="space-y-2 text-left"></div>
+            <button id="btn-back-lobby" class="btn primary w-full py-3">Zurück zur Lobby</button>
+        </div>
+    </div>
+
+    <!-- ============ EINLADUNGEN & MELDUNGEN ============ -->
+    <div id="invite-stack" class="fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-2 p-3 pointer-events-none"></div>
+    <div id="toasts" class="fixed top-16 right-3 z-50 flex flex-col gap-2 w-64 max-w-[75vw]"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+    <script src="ttt3d-game.js"></script>
+    <script src="ttt3d-net.js"></script>
+    <script src="ttt3d-ui.js"></script>
+</body>
+</html>

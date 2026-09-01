@@ -21,6 +21,10 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://biefel.de/ttt3d.html</loc>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://biefel.de/impressum.html</loc>
     <priority>0.2</priority>
   </url>
