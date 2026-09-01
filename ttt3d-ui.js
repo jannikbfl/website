@@ -47,6 +47,115 @@
         setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 5000);
     }
 
+    /* ============================================================
+       BROWSER-BENACHRICHTIGUNGEN
+       Absichtlich nur, wenn der Tab gerade nicht im Vordergrund ist -
+       wer zuschaut, sieht den Zugwechsel ohnehin auf dem Brett.
+       ============================================================ */
+
+    function notifySupported() { return typeof global.Notification !== 'undefined'; }
+
+    function notifyPermission() { return notifySupported() ? global.Notification.permission : 'unsupported'; }
+
+    function pageInView() { return !document.hidden && document.hasFocus(); }
+
+    function renderBell() {
+        var b = $('btn-notify');
+        if (!b) return;
+        var perm = notifyPermission();
+        var on = notifyOn && perm === 'granted';
+        var title;
+
+        if (perm === 'unsupported') title = 'Dein Browser unterstuetzt keine Benachrichtigungen.';
+        else if (perm === 'denied') title = 'Benachrichtigungen sind für diese Seite im Browser blockiert.';
+        else if (on) title = 'Benachrichtigung, wenn du am Zug bist: an';
+        else title = 'Benachrichtigung, wenn du am Zug bist: aus';
+
+        b.textContent = on ? '🔔' : '🔕';
+        b.title = title;
+        b.setAttribute('aria-label', title);
+        b.classList.toggle('on', on);
+        b.classList.toggle('blocked', perm === 'denied' || perm === 'unsupported');
+    }
+
+    function saveNotifyPref() {
+        try { localStorage.setItem('ttt3d.notify', notifyOn ? 'on' : 'off'); } catch (e) { /* egal */ }
+    }
+
+    /* ask === true nur aus einer echten Nutzeraktion heraus aufrufen,
+       sonst lehnen die Browser die Nachfrage ab. */
+    function enableNotifications(ask) {
+        if (!notifySupported()) { notifyOn = false; renderBell(); return; }
+
+        var perm = global.Notification.permission;
+        if (perm === 'granted') { notifyOn = true; saveNotifyPref(); renderBell(); return; }
+        if (perm === 'denied') {
+            notifyOn = false; saveNotifyPref(); renderBell();
+            if (ask) toast('Benachrichtigungen sind im Browser blockiert. Du kannst sie in den Seiteneinstellungen wieder erlauben.', 'warn');
+            return;
+        }
+        if (!ask) { renderBell(); return; }
+
+        var settled = false;
+        function done(result) {
+            if (settled) return;
+            settled = true;
+            notifyOn = result === 'granted';
+            saveNotifyPref();
+            renderBell();
+            if (!notifyOn) toast('Ohne Erlaubnis gibt es keine Benachrichtigungen – im Tab-Titel siehst du trotzdem, wenn du dran bist.');
+        }
+
+        var ret;
+        try { ret = global.Notification.requestPermission(done); } catch (e) { return; }
+        if (ret && typeof ret.then === 'function') ret.then(done, function () { done('denied'); });
+    }
+
+    function disableNotifications() {
+        notifyOn = false;
+        saveNotifyPref();
+        closeNote();
+        renderBell();
+    }
+
+    function pushNote(title, body, tag) {
+        if (!notifyOn || notifyPermission() !== 'granted') return;
+        if (pageInView()) return;
+        closeNote();
+        try {
+            currentNote = new global.Notification(title, {
+                body: body,
+                tag: tag || 'ttt3d',
+                renotify: true,
+                icon: 'assets/ttt3d-thumb.svg'
+            });
+            currentNote.onclick = function () {
+                try { global.focus(); } catch (e) { /* egal */ }
+                closeNote();
+            };
+        } catch (e) { currentNote = null; }
+    }
+
+    function closeNote() {
+        if (!currentNote) return;
+        try { currentNote.close(); } catch (e) { /* egal */ }
+        currentNote = null;
+    }
+
+    /* Der Tab-Titel ist die zweite, immer verfügbare Meldung -
+       die funktioniert auch ohne erteilte Berechtigung. */
+    function updateTitle() {
+        var t = baseTitle;
+        if (gs && gs.phase === 'play' && gs.turn) {
+            t = gs.turn === me.id ? 'DU BIST DRAN!' : nameOf(gs.turn) + ' ist am Zug · TicTacToe 3D';
+        } else if (gs && gs.phase === 'pick') {
+            t = 'Startspieler wird bestimmt · TicTacToe 3D';
+        } else if (gs && gs.phase === 'over') {
+            t = 'Spiel beendet · TicTacToe 3D';
+        }
+        if (document.title !== t) document.title = t;
+    }
+
     /* ---------------- lokaler Zustand ---------------- */
 
     var me = { id: null, name: '' };
@@ -63,6 +172,10 @@
     var joiningRoom = null;  // Beitritt losgeschickt, Zustand noch nicht da
     var renderedPhase = null;
     var renderedRoom = null;
+    var renderedTurn = null;
+    var notifyOn = false;    // Benachrichtigungen vom Nutzer gewuenscht
+    var currentNote = null;  // gerade offene Browser-Benachrichtigung
+    var baseTitle = document.title;
 
     /* ---------------- Ansichten ---------------- */
 
@@ -98,6 +211,23 @@
         var savedName = localStorage.getItem('ttt3d.name') || '';
         $('gate-name').value = savedName;
 
+        // Benachrichtigungen: gemerkte Einstellung laden, aber die Berechtigung
+        // erst beim Betreten der Lobby erfragen (dort gibt es eine Nutzeraktion).
+        notifyOn = localStorage.getItem('ttt3d.notify') !== 'off';
+        $('gate-notify').checked = notifyOn && notifyPermission() !== 'denied';
+        if (notifyOn && notifyPermission() === 'granted') enableNotifications(false);
+        else if (notifyPermission() === 'denied') notifyOn = false;
+        renderBell();
+
+        $('btn-notify').addEventListener('click', function () {
+            if (notifyOn && notifyPermission() === 'granted') disableNotifications();
+            else enableNotifications(true);
+        });
+
+        // Wer wieder auf den Tab schaut, braucht die Meldung nicht mehr.
+        document.addEventListener('visibilitychange', function () { if (pageInView()) closeNote(); });
+        global.addEventListener('focus', closeNote);
+
         $('gate-form').addEventListener('submit', function (e) {
             e.preventDefault();
             var name = Net.cleanName($('gate-name').value);
@@ -109,6 +239,12 @@
             show($('gate-error'), false);
             me.name = name;
             localStorage.setItem('ttt3d.name', name);
+
+            // Der Klick auf "Lobby betreten" ist die Nutzeraktion, aus der
+            // heraus der Browser die Berechtigungsabfrage zulaesst.
+            if ($('gate-notify').checked) enableNotifications(true);
+            else disableNotifications();
+
             enterLobby();
         });
 
@@ -332,6 +468,9 @@
         card.appendChild(yes);
         stack.appendChild(card);
 
+        // Eine Einladung im Hintergrund-Tab wuerde man sonst verpassen.
+        pushNote('Einladung zu einer Runde', inv.name + ' lädt dich zu TicTacToe 3D ein.', 'ttt3d-invite');
+
         setTimeout(close, 45000);
     }
 
@@ -547,10 +686,24 @@
     function applyState(st, local) {
         var prevPhase = renderedPhase;
         var prevRoom = renderedRoom;
+        var prevTurn = renderedTurn;
         gs = st;
         lastStateAt = Date.now();
         renderedPhase = st.phase;
         renderedRoom = st.room;
+        renderedTurn = st.turn || null;
+
+        // Genau beim Wechsel melden, nicht bei jedem Zustands-Update. Der
+        // Startspieler steht schon in der Auslosungs-Phase fest, deshalb zaehlt
+        // auch der Uebergang von "pick" nach "play" als Wechsel.
+        var myTurnNow = st.phase === 'play' && st.turn === me.id;
+        var myTurnBefore = prevPhase === 'play' && prevTurn === me.id;
+        if (myTurnNow && !myTurnBefore) {
+            pushNote('Du bist dran!', 'TicTacToe 3D · Runde ' + st.room, 'ttt3d-turn');
+        } else if (!myTurnNow) {
+            closeNote();
+        }
+        updateTitle();
 
         if (st.phase === 'closed') {
             if (!$('ov-result').hidden) return;   // Ergebnis darf stehen bleiben
@@ -868,6 +1021,9 @@
         joiningRoom = null;
         renderedPhase = null;
         renderedRoom = null;
+        renderedTurn = null;
+        closeNote();
+        updateTitle();
         if (rouletteTimer) { clearTimeout(rouletteTimer); rouletteTimer = null; }
         show($('ov-pick'), false);
         show($('ov-result'), false);

@@ -24,7 +24,7 @@
         <a href="index.html" class="text-xs font-bold text-slate-400 hover:text-white bg-slate-700/50 py-2 px-3 rounded-lg transition shrink-0">
             &larr; Exit
         </a>
-        <h1 class="text-sm md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400 shrink-0">
+        <h1 class="text-sm md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400 shrink-0 hidden sm:block">
             TicTacToe 3D
         </h1>
 
@@ -33,6 +33,7 @@
                 <span id="net-dot" class="w-2 h-2 rounded-full bg-slate-500 shrink-0"></span>
                 <span id="net-text" class="text-slate-400 truncate">nicht verbunden</span>
             </div>
+            <button id="btn-notify" type="button" class="btn-bell">&#128276;</button>
             <select id="broker-select" title="Verbindungsserver – alle Mitspieler müssen denselben nutzen"
                     class="bg-slate-900/60 border border-slate-700 rounded-lg px-2 py-1.5 text-slate-300 text-xs">
             </select>
@@ -56,6 +57,19 @@
                            placeholder="z. B. Jannik"
                            class="w-full bg-slate-900 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-sky-500">
                     <p id="gate-error" class="text-rose-400 text-xs" hidden></p>
+
+                    <label class="flex items-start gap-2 text-xs text-slate-400 cursor-pointer">
+                        <input id="gate-notify" type="checkbox" checked
+                               class="mt-0.5 w-4 h-4 shrink-0 accent-blue-600 bg-slate-900 border-slate-600 rounded">
+                        <span>
+                            Mich benachrichtigen, wenn ich am Zug bin.
+                            <span class="block text-slate-500">
+                                Der Browser fragt dann einmalig nach Erlaubnis. Die Meldung kommt nur,
+                                wenn dieser Tab gerade nicht im Vordergrund ist.
+                            </span>
+                        </span>
+                    </label>
+
                     <button type="submit" class="btn primary w-full py-3">Lobby betreten</button>
                 </form>
 
