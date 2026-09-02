@@ -234,10 +234,10 @@
             var b = buttons[i];
             if (!b) continue;
             var owner = state.board[i];
-            var seat = owner ? ctx.seatOf(owner) : -1;
+            var piece = owner ? ctx.piece(owner) : null;
 
             var cls = 'mp-cell';
-            if (owner) cls += ' taken p' + seat;
+            if (owner) cls += ' taken';
             if (ctx.scoredCells[i]) cls += ' scored';
             if (state.last === i) cls += ' last';
             // Anklickbar ist jedes Feld einer Saeule, in der noch Platz ist.
@@ -247,7 +247,9 @@
 
             var wasEmpty = b.textContent === '';
             b.className = cls;
-            b.textContent = owner ? ctx.symbols[seat] : '';
+            b.textContent = piece ? piece.shape : '';
+            if (piece) b.style.setProperty('--seat', piece.color);
+            else b.style.removeProperty('--seat');
             b.disabled = !free;
 
             if (owner && wasEmpty) {

@@ -15,12 +15,15 @@
    Der Adapter muss liefern:
      root, name, icon, symbols, seatNames
      minPlayers, maxPlayers, cells
+     looks (optional): {shapes:[...], colors:[{id,value,name}]} - dann duerfen
+       Spieler Form und Farbe waehlen; requireReady sperrt zusaetzlich den
+       Start, bis alle bereit sind
      emptyBoard()  isFull(board)  freeCount(board)
      describeLine(lineIndex)
      moveForCell(state, cell)   -> tatsaechlich belegtes Feld oder null
      applyMove(board, playerId, cell) -> Array vollendeter Linien oder null
      buildBoard(container, onClick)
-     renderBoard(state, ctx)    ctx = {seatOf, myTurn, scoredCells, flashLines}
+     renderBoard(state, ctx)    ctx = {piece, seatOf, myTurn, scoredCells, flashLines}
    ============================================================ */
 
 (function (global) {
@@ -31,6 +34,8 @@
 
     var SYMBOLS = [];
     var SEAT_NAMES = ['Sitz 1', 'Sitz 2', 'Sitz 3'];
+    // Rueckfallfarben, wenn das Spiel keine freie Auswahl anbietet.
+    var SEAT_COLORS = ['#38bdf8', '#fbbf24', '#34d399'];
 
     var PING_MS = 4000;        // Lebenszeichen innerhalb einer Runde
     /* Die beiden Fristen sind bewusst lang: Browser drosseln die Timer in
@@ -60,6 +65,34 @@
     }
 
     function show(node, on) { node.hidden = !on; }
+
+    /* ---------------- Aussehen eines Spielers ----------------
+       Form und Farbe gehoeren dem Spieler, nicht dem Sitz. Bietet ein Spiel
+       keine Auswahl an, fallen wir auf die festen Sitzwerte zurueck. */
+
+    function pieceOfPlayer(p) {
+        if (!p) return { shape: '?', color: '#64748b' };
+        return {
+            shape: p.shape || SYMBOLS[p.seat] || '?',
+            color: p.color || SEAT_COLORS[p.seat] || '#94a3b8'
+        };
+    }
+
+    function pieceOf(playerId, state) {
+        var s = state || gs;
+        if (s && s.players) {
+            for (var i = 0; i < s.players.length; i++) {
+                if (s.players[i].id === playerId) return pieceOfPlayer(s.players[i]);
+            }
+        }
+        return pieceOfPlayer(null);
+    }
+
+    /* Faerbt einen Knoten in der Spielerfarbe - das CSS liest ueberall --seat. */
+    function tint(node, color) {
+        node.style.setProperty('--seat', color);
+        return node;
+    }
 
     function toast(text, kind) {
         var box = $('toasts');
@@ -195,7 +228,7 @@
         log.appendChild(el('p', 'chat-empty', hint || 'Noch keine Nachrichten.'));
     }
 
-    function chatAppend(kind, name, text, seat, self) {
+    function chatAppend(kind, name, text, color, self) {
         var log = $('chat-' + kind + '-log');
         if (!log) return;
 
@@ -206,7 +239,8 @@
         // einem beim Zurueckblaettern die Ansicht weg.
         var atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 40;
 
-        var line = el('div', 'chat-line' + (seat >= 0 ? ' seat-' + seat : '') + (self ? ' me' : ''));
+        var line = el('div', 'chat-line' + (self ? ' me' : ''));
+        if (color) tint(line, color);
         line.appendChild(el('span', 'chat-name', name));
         line.appendChild(document.createTextNode(' '));
         line.appendChild(el('span', 'chat-text', text));
@@ -245,7 +279,7 @@
     }
 
     function onLobbyChat(m) {
-        chatAppend('lobby', m.name, m.text, -1, m.from === me.id);
+        chatAppend('lobby', m.name, m.text, null, m.from === me.id);
     }
 
     /* ---------------- lokaler Zustand ---------------- */
@@ -263,6 +297,7 @@
     var rouletteTimer = null;
 
     var joiningRoom = null;  // Beitritt losgeschickt, Zustand noch nicht da
+    var myLook = { shape: null, color: null };  // gemerkter Wunsch fuer die naechste Runde
     var renderedPhase = null;
     var renderedRoom = null;
     var renderedTurn = null;
@@ -350,6 +385,10 @@
 
             enterLobby();
         });
+
+        // Spielfigur-Auswahl gibt es nur, wenn das Spiel eine anbietet.
+        if (G.looks) loadLook();
+        if ($('btn-ready')) $('btn-ready').addEventListener('click', toggleReady);
 
         $('btn-start').addEventListener('click', hostStartPick);
         $('btn-dissolve').addEventListener('click', function () { quitRound(false); });
@@ -488,12 +527,21 @@
         var players = inRound ? gs.players : [];
         for (var i = 0; i < G.maxPlayers; i++) {
             var p = players[i];
-            var s = el('div', 'slot seat-' + i + (p ? ' filled' : ''));
+            // Leere Plaetze bleiben neutral - welche Figur dort sitzt, waehlt
+            // der Spieler ja erst selbst.
+            var piece = p ? pieceOfPlayer(p)
+                          : (G.looks ? { shape: '·', color: '#475569' }
+                                     : { shape: SYMBOLS[i] || '·', color: SEAT_COLORS[i] });
+            var s = tint(el('div', 'slot' + (p ? ' filled' : '')), piece.color);
             s.appendChild(el('span', 'seat-dot'));
-            s.appendChild(el('span', 'font-black', SYMBOLS[i]));
+            s.appendChild(el('span', 'font-black', piece.shape));
             s.appendChild(el('span', 'text-sm truncate',
                 p ? p.name : (i >= G.minPlayers ? 'frei (optional)' : 'frei')));
-            if (p && gs && p.id === gs.host) s.appendChild(el('span', 'ml-auto text-[10px] text-amber-400 font-bold', 'ADMIN'));
+            if (p && gs && p.id === gs.host) s.appendChild(el('span', 'text-[10px] text-amber-400 font-bold', 'ADMIN'));
+            if (p && G.requireReady) {
+                s.appendChild(el('span', 'ready-badge' + (p.ready ? ' on' : ''),
+                    p.ready ? '✓ bereit' : 'wartet'));
+            }
             slots.appendChild(s);
         }
 
@@ -505,11 +553,13 @@
 
         var isHost = !!(gs && gs.host === me.id);
         var count = inRound ? gs.players.length : 0;
-        var ready = inRound && count >= G.minPlayers;
+        var enough = inRound && count >= G.minPlayers;
+        var allReady = inRound && everyoneReady();
 
-        $('btn-start').disabled = !(isHost && ready && gs.phase === 'lobby');
+        $('btn-start').disabled = !(isHost && enough && allReady && gs.phase === 'lobby');
         if (!inRound) $('btn-start').textContent = 'Spiel starten';
-        else if (!ready) $('btn-start').textContent = 'Warte auf ' + (G.minPlayers - count) + ' Spieler';
+        else if (!enough) $('btn-start').textContent = 'Warte auf ' + (G.minPlayers - count) + ' Spieler';
+        else if (!allReady) $('btn-start').textContent = 'Warte auf ' + waitingCount() + ' Bereitmeldung' + (waitingCount() === 1 ? '' : 'en');
         else $('btn-start').textContent = 'Mit ' + count + ' Spielern starten';
 
         var role = '';
@@ -517,11 +567,170 @@
             role = isHost ? 'Du bist Rundenadmin und bestimmst den Startspieler.'
                           : 'Rundenadmin ist ' + nameOf(gs.host) + '.';
             // Wenn auch weniger als die volle Besetzung reicht, sagen wir das.
-            if (isHost && ready && count < G.maxPlayers) {
+            if (isHost && enough && allReady && count < G.maxPlayers) {
                 role = 'Du kannst jetzt starten – oder noch jemanden einladen.';
             }
         }
         $('room-role').textContent = role;
+
+        renderLookPicker();
+    }
+
+    function everyoneReady() {
+        if (!G.requireReady) return true;
+        if (!gs) return false;
+        for (var i = 0; i < gs.players.length; i++) if (!gs.players[i].ready) return false;
+        return true;
+    }
+
+    function waitingCount() {
+        if (!gs) return 0;
+        var n = 0;
+        for (var i = 0; i < gs.players.length; i++) if (!gs.players[i].ready) n++;
+        return n;
+    }
+
+    /* ============================================================
+       SPIELFIGUR WAEHLEN
+       Form und Farbe sind innerhalb einer Runde eindeutig - sonst waeren
+       zwei Spieler auf dem Brett nicht auseinanderzuhalten. Vergeben wird
+       ausschliesslich vom Rundenadmin; die Clients zeigen belegte Optionen
+       nur schon vorab als gesperrt an.
+       ============================================================ */
+
+    function colorValues() {
+        return G.looks.colors.map(function (c) { return c.value; });
+    }
+
+    function colorName(value) {
+        for (var i = 0; i < G.looks.colors.length; i++) {
+            if (G.looks.colors[i].value === value) return G.looks.colors[i].name;
+        }
+        return 'Farbe';
+    }
+
+    function myPlayer() {
+        if (!gs) return null;
+        for (var i = 0; i < gs.players.length; i++) if (gs.players[i].id === me.id) return gs.players[i];
+        return null;
+    }
+
+    function loadLook() {
+        try {
+            myLook.shape = localStorage.getItem('mp.shape') || null;
+            myLook.color = localStorage.getItem('mp.color') || null;
+        } catch (e) { /* egal */ }
+    }
+
+    function saveLook() {
+        try {
+            if (myLook.shape) localStorage.setItem('mp.shape', myLook.shape);
+            if (myLook.color) localStorage.setItem('mp.color', myLook.color);
+        } catch (e) { /* egal */ }
+    }
+
+    function renderLookPicker() {
+        var box = $('look-picker');
+        if (!box || !G.looks) return;
+
+        var mine = myPlayer();
+        show(box, !!mine && gs.phase === 'lobby');
+        if (!mine || gs.phase !== 'lobby') return;
+
+        var locked = !!mine.ready;
+        var piece = pieceOfPlayer(mine);
+
+        // Gemerkt wird, was der Admin bestaetigt hat - nicht der blosse Wunsch.
+        myLook.shape = mine.shape || null;
+        myLook.color = mine.color || null;
+        saveLook();
+
+        var takenShape = {}, takenColor = {};
+        gs.players.forEach(function (p) {
+            if (p.id === me.id) return;
+            if (p.shape) takenShape[p.shape] = p.name;
+            if (p.color) takenColor[p.color] = p.name;
+        });
+
+        var glyph = $('look-glyph');
+        glyph.textContent = piece.shape;
+        tint(glyph, piece.color);
+        tint($('look-picker'), piece.color);
+
+        $('look-hint').textContent = locked
+            ? 'Du bist bereit. Zum Ändern erst wieder abmelden.'
+            : 'Form und Farbe sind pro Runde eindeutig.';
+
+        var sBox = $('look-shapes');
+        sBox.textContent = '';
+        G.looks.shapes.forEach(function (sh) {
+            var owner = takenShape[sh];
+            var b = el('button', 'look-opt' + (sh === piece.shape ? ' on' : ''), sh);
+            b.type = 'button';
+            b.disabled = locked || !!owner;
+            b.title = owner ? 'schon von ' + owner + ' belegt' : 'Form ' + sh;
+            b.addEventListener('click', function () { chooseLook(sh, null); });
+            sBox.appendChild(b);
+        });
+
+        var cBox = $('look-colors');
+        cBox.textContent = '';
+        G.looks.colors.forEach(function (col) {
+            var owner = takenColor[col.value];
+            var b = el('button', 'look-opt swatch'
+                + (col.value === piece.color ? ' on' : '')
+                + (owner ? ' taken' : ''));
+            b.type = 'button';
+            b.style.setProperty('--swatch', col.value);
+            b.disabled = locked || !!owner;
+            b.title = owner ? col.name + ' – schon von ' + owner + ' belegt' : col.name;
+            b.setAttribute('aria-label', col.name);
+            b.addEventListener('click', function () { chooseLook(null, col.value); });
+            cBox.appendChild(b);
+        });
+
+        var rb = $('btn-ready');
+        rb.className = 'btn w-full' + (locked ? '' : ' primary');
+        rb.textContent = locked ? '✓ Bereit – doch noch ändern' : 'Bereit';
+    }
+
+    /* Es wird immer nur die tatsaechlich geaenderte Eigenschaft geschickt.
+       Wuerden wir beides senden, koennte ein noch nicht eingetroffener
+       Zustand die eigene, gerade erst bestaetigte Wahl wieder ueberschreiben. */
+    function chooseLook(shape, color) {
+        var mine = myPlayer();
+        if (!mine || mine.ready) return;
+        sendSetup(shape || null, color || null, mine.ready);
+    }
+
+    function toggleReady() {
+        var mine = myPlayer();
+        if (!mine) return;
+        sendSetup(null, null, !mine.ready);
+    }
+
+    function sendSetup(shape, color, ready) {
+        if (!gs) return;
+        if (host) hostSetup(me.id, { shape: shape, color: color, ready: ready });
+        else Net.publishAct(gs.room, { t: 'setup', shape: shape, color: color, ready: !!ready });
+    }
+
+    /* Wunsch erfuellen, wenn er zulaessig und frei ist - sonst das erste
+       freie Element der Liste. */
+    function freeLook(list, taken, wish) {
+        if (wish && list.indexOf(wish) >= 0 && !taken[wish]) return wish;
+        for (var i = 0; i < list.length; i++) if (!taken[list[i]]) return list[i];
+        return list[0];
+    }
+
+    function takenLooks(exceptId) {
+        var s = {}, c = {};
+        gs.players.forEach(function (p) {
+            if (p.id === exceptId) return;
+            if (p.shape) s[p.shape] = true;
+            if (p.color) c[p.color] = true;
+        });
+        return { shape: s, color: c };
     }
 
     /* ---------------- Matchmaking ---------------- */
@@ -572,7 +781,7 @@
             joiningRoom = inv.roomId;
             Net.publishLobby({ t: 'invite-res', to: inv.from, roomId: inv.roomId, ok: true });
             Net.enterRoom(inv.roomId);
-            Net.publishAct(inv.roomId, { t: 'join' });
+            Net.publishAct(inv.roomId, { t: 'join', shape: myLook.shape, color: myLook.color });
             lastStateAt = Date.now();
             toast('Runde ' + inv.roomId + ' beigetreten.');
             // Antwortet der Admin nicht, nicht ewig haengen bleiben.
@@ -617,11 +826,12 @@
         gs = {
             v: 1, t: 'state', id: me.id, name: me.name,
             room: roomId, seq: 0, phase: 'lobby', host: me.id,
-            players: [{ id: me.id, name: me.name, seat: 0 }],
+            players: [{ id: me.id, name: me.name, seat: 0, ready: false }],
             turn: null, board: G.emptyBoard(), scores: {}, scored: [],
             last: null, pick: null, reason: null
         };
         gs.scores[me.id] = 0;
+        hostAssignLook(gs.players[0], myLook.shape, myLook.color);
 
         Net.enterRoom(roomId);
         hostPublish({});
@@ -661,7 +871,7 @@
             if (!text) return;
             if (host) host.seen[senderId] = Date.now();
             chatAppend('room', gs.players[memberIndex(senderId)].name, text,
-                       seatOf(senderId, gs), senderId === me.id);
+                       pieceOf(senderId, gs).color, senderId === me.id);
             return;
         }
 
@@ -676,10 +886,18 @@
             }
             delete pending[senderId];
             var name = Net.cleanName(msg.name) || 'Spieler';
-            gs.players.push({ id: senderId, name: name, seat: gs.players.length });
+            var joiner = { id: senderId, name: name, seat: gs.players.length, ready: false };
+            gs.players.push(joiner);
+            // Wunsch des Beitretenden beruecksichtigen, wenn er noch frei ist.
+            hostAssignLook(joiner, msg.shape, msg.color);
             gs.scores[senderId] = 0;
             toast(name + ' ist der Runde beigetreten.');
             hostPublish({});
+            return;
+        }
+
+        if (msg.t === 'setup') {
+            hostSetup(senderId, msg);
             return;
         }
 
@@ -692,6 +910,45 @@
             hostApplyMove(senderId, msg.cell);
             return;
         }
+    }
+
+    /* Vergibt Form und Farbe. Der Admin ist die einzige Stelle, die das tut -
+       damit kann sich kein Client die Farbe eines anderen greifen. */
+    function hostAssignLook(player, wishShape, wishColor) {
+        if (!G.looks) return;
+        var taken = takenLooks(player.id);
+        player.shape = freeLook(G.looks.shapes, taken.shape, wishShape);
+        player.color = freeLook(colorValues(), taken.color, wishColor);
+    }
+
+    function hostSetup(playerId, wish) {
+        if (!host || !gs || gs.phase !== 'lobby') return;
+        var i = memberIndex(playerId);
+        if (i < 0) return;
+
+        var p = gs.players[i];
+        var changed = false;
+
+        if (G.looks) {
+            var taken = takenLooks(playerId);
+            // Nur uebernehmen, was zulaessig und frei ist - sonst bleibt es,
+            // wie es war. freeLook faellt sonst auf ein anderes Element zurueck,
+            // was hier nicht gewollt ist.
+            if (typeof wish.shape === 'string'
+                && G.looks.shapes.indexOf(wish.shape) >= 0
+                && !taken.shape[wish.shape]
+                && wish.shape !== p.shape) { p.shape = wish.shape; changed = true; }
+
+            if (typeof wish.color === 'string'
+                && colorValues().indexOf(wish.color) >= 0
+                && !taken.color[wish.color]
+                && wish.color !== p.color) { p.color = wish.color; changed = true; }
+        }
+
+        var ready = !!wish.ready;
+        if (ready !== !!p.ready) { p.ready = ready; changed = true; }
+
+        if (changed) hostPublish({});
     }
 
     function hostMemberGone(id) {
@@ -714,6 +971,7 @@
 
     function hostStartPick() {
         if (!host || !gs || gs.phase !== 'lobby' || gs.players.length < G.minPlayers) return;
+        if (!everyoneReady()) return;
         hostPublish({ phase: 'pick', pick: null });
     }
 
@@ -927,7 +1185,7 @@
             myTurn: gs.phase === 'play' && gs.turn === me.id,
             scoredCells: scoredCells,
             flashLines: flashLines,
-            symbols: SYMBOLS
+            piece: function (id) { return pieceOf(id, gs); }
         });
 
         if (flashLines.length) {
@@ -943,10 +1201,10 @@
         var bar = $('score-bar');
         bar.textContent = '';
         gs.players.forEach(function (p) {
-            var row = el('div', 'mp-player seat-' + p.seat +
-                (gs.turn === p.id ? ' active' : ''));
+            var pc = pieceOfPlayer(p);
+            var row = tint(el('div', 'mp-player' + (gs.turn === p.id ? ' active' : '')), pc.color);
             row.setAttribute('data-player', p.id);
-            row.appendChild(el('span', 'sym', SYMBOLS[p.seat]));
+            row.appendChild(el('span', 'sym', pc.shape));
 
             var mid = el('div', 'min-w-0');
             mid.appendChild(el('div', 'nm', p.name + (p.id === me.id ? ' (du)' : '')));
@@ -973,7 +1231,7 @@
         show($('score-log-empty'), gs.scored.length === 0);
 
         gs.scored.slice().reverse().forEach(function (s) {
-            var line = el('div', 'log-line seat-' + seatOf(s.by, gs));
+            var line = tint(el('div', 'log-line'), pieceOf(s.by, gs).color);
             var b = el('b', null, nameOf(s.by));
             line.appendChild(b);
             line.appendChild(document.createTextNode(' +1 · ' + G.describeLine(s.line)));
@@ -1004,7 +1262,8 @@
                 var wrap = $('pick-buttons');
                 wrap.textContent = '';
                 gs.players.forEach(function (p) {
-                    var b = el('button', 'btn w-full seat-' + p.seat, SYMBOLS[p.seat] + '  ' + p.name);
+                    var pc = pieceOfPlayer(p);
+                    var b = tint(el('button', 'btn w-full', pc.shape + '  ' + p.name), pc.color);
                     b.addEventListener('click', function () { hostChooseStarter(p.id); });
                     wrap.appendChild(b);
                 });
@@ -1033,7 +1292,8 @@
 
         function step() {
             var id = order[i];
-            nameEl.className = 'roulette-name seat-' + seatOf(id, gs);
+            nameEl.className = 'roulette-name';
+            tint(nameEl, pieceOf(id, gs).color);
             nameEl.textContent = nameOf(id);
             i++;
 
@@ -1053,7 +1313,8 @@
 
     function settlePick(picked) {
         var nameEl = $('pick-name');
-        nameEl.className = 'roulette-name settled seat-' + seatOf(picked, gs);
+        nameEl.className = 'roulette-name settled';
+        tint(nameEl, pieceOf(picked, gs).color);
         nameEl.textContent = nameOf(picked);
         $('pick-sub').textContent = (picked === me.id ? 'Du fängst an!' : 'fängt an')
             + ' – gleich geht es los.';
@@ -1080,16 +1341,18 @@
         } else {
             var w = rank.winners[0];
             $('result-crown').textContent = '\u{1F3C6}';
-            $('result-title').className = 'roulette-name settled seat-' + w.seat;
+            $('result-title').className = 'roulette-name settled';
+            tint($('result-title'), pieceOf(w.id, gs).color);
             $('result-title').textContent = (w.id === me.id ? 'Du gewinnst!' : w.name + ' gewinnt!');
         }
 
         var tbl = $('result-table');
         tbl.textContent = '';
         rank.list.forEach(function (p, i) {
-            var row = el('div', 'mp-player seat-' + p.seat);
+            var pc = pieceOf(p.id, gs);
+            var row = tint(el('div', 'mp-player'), pc.color);
             row.appendChild(el('span', 'text-slate-500 text-xs font-bold w-4', String(i + 1)));
-            row.appendChild(el('span', 'sym', SYMBOLS[p.seat]));
+            row.appendChild(el('span', 'sym', pc.shape));
             row.appendChild(el('span', 'nm flex-1', p.name + (p.id === me.id ? ' (du)' : '')));
             row.appendChild(el('span', 'pts', p.score + (p.score === 1 ? ' Punkt' : ' Punkte')));
             tbl.appendChild(row);

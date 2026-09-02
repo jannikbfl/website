@@ -184,17 +184,19 @@
             var b = buttons[i];
             if (!b) continue;
             var owner = state.board[i];
-            var seat = owner ? ctx.seatOf(owner) : -1;
+            var piece = owner ? ctx.piece(owner) : null;
 
             var cls = 'mp-cell';
-            if (owner) cls += ' taken p' + seat;
+            if (owner) cls += ' taken';
             if (ctx.scoredCells[i]) cls += ' scored';
             if (state.last === i) cls += ' last';
             if (!owner && ctx.myTurn) cls += ' playable';
 
             var wasEmpty = b.textContent === '';
             b.className = cls;
-            b.textContent = owner ? ctx.symbols[seat] : '';
+            b.textContent = piece ? piece.shape : '';
+            if (piece) b.style.setProperty('--seat', piece.color);
+            else b.style.removeProperty('--seat');
             b.disabled = !(ctx.myTurn && !owner);
 
             if (owner && wasEmpty) {
@@ -223,10 +225,31 @@
         root: 'biefel-de/ttt3d/v1',
         name: '3DicDacDoe',
         icon: 'assets/ttt3d-thumb.svg',
-        symbols: ['✕', '◯', '▲'],
+        symbols: ['✕', '◯', '▲'],   // Rueckfallwerte, falls jemand nichts waehlt
         minPlayers: 3,
         maxPlayers: 3,
         cells: CELLS,
+
+        /* Jeder waehlt in der Lobby Form und Farbe und meldet sich bereit.
+           Bewusst nur geometrische Zeichen: die haben keine Emoji-Variante
+           und werden deshalb ueberall einfarbig gezeichnet, also in der
+           gewaehlten Spielerfarbe statt bunt vom System. */
+        looks: {
+            shapes: ['✕', '✚', '◯', '●', '▲', '▼', '◆', '◇', '■', '□', '★', '◐'],
+            colors: [
+                { id: 'himmel',  value: '#38bdf8', name: 'Himmelblau' },
+                { id: 'bernstein', value: '#fbbf24', name: 'Bernstein' },
+                { id: 'smaragd', value: '#34d399', name: 'Smaragd' },
+                { id: 'rose',    value: '#fb7185', name: 'Rose' },
+                { id: 'violett', value: '#c084fc', name: 'Violett' },
+                { id: 'orange',  value: '#fb923c', name: 'Orange' },
+                { id: 'tuerkis', value: '#22d3ee', name: 'Türkis' },
+                { id: 'limette', value: '#a3e635', name: 'Limette' },
+                { id: 'pink',    value: '#f472b6', name: 'Pink' },
+                { id: 'schnee',  value: '#e2e8f0', name: 'Schnee' }
+            ]
+        },
+        requireReady: true,
 
         emptyBoard: emptyBoard,
         isFull: isFull,

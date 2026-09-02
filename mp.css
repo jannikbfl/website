@@ -76,10 +76,15 @@
 .mp-cell.playable:active { transform: scale(.94); }
 .mp-cell:disabled { cursor: default; }
 
-.mp-cell.taken { background: #0b1220; }
-.mp-cell.taken.p0 { color: var(--p0); border-color: rgba(56, 189, 248, .45); }
-.mp-cell.taken.p1 { color: var(--p1); border-color: rgba(251, 191, 36, .45); }
-.mp-cell.taken.p2 { color: var(--p2); border-color: rgba(52, 211, 153, .45); }
+/* Die Farbe kommt vom Spieler (inline als --seat gesetzt), nicht vom Sitz. */
+.mp-cell.taken {
+    background: #0b1220;
+    color: var(--seat, #e2e8f0);
+    border-color: var(--seat, #334155);
+}
+@supports (color: color-mix(in srgb, red 50%, transparent)) {
+    .mp-cell.taken { border-color: color-mix(in srgb, var(--seat, #e2e8f0) 45%, transparent); }
+}
 
 /* Zuletzt gesetzter Stein */
 .mp-cell.last::after {
@@ -245,6 +250,60 @@
     60%  { transform: scale(1.18); opacity: 1; }
     100% { transform: scale(1); }
 }
+
+/* ---------------- Spielfigur waehlen ---------------- */
+
+.look-preview {
+    display: flex; align-items: center; gap: 10px;
+    background: #0b1220; border: 1px solid #1e293b;
+    border-radius: 12px; padding: 8px 12px;
+}
+.look-preview .glyph {
+    font-size: 26px; font-weight: 900; line-height: 1;
+    color: var(--seat, #94a3b8);
+    text-shadow: 0 0 14px var(--seat, transparent);
+}
+
+.look-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.look-opt {
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: #0f172a; border: 1px solid #334155;
+    color: #cbd5e1; font-size: 17px; font-weight: 900; line-height: 1;
+    transition: background .12s, border-color .12s, transform .08s;
+}
+.look-opt:hover:not(:disabled) { background: #1e293b; border-color: #64748b; }
+.look-opt:active:not(:disabled) { transform: scale(.92); }
+.look-opt.on { border-color: #e2e8f0; background: #1e293b; box-shadow: 0 0 0 1px #e2e8f0; }
+.look-opt:disabled { opacity: .3; cursor: not-allowed; }
+
+/* Farbfelder: der Punkt traegt die Farbe, nicht der Rahmen. */
+.look-opt.swatch { position: relative; }
+.look-opt.swatch::before {
+    content: '';
+    width: 18px; height: 18px; border-radius: 999px;
+    background: var(--swatch);
+}
+.look-opt.swatch.on::before { box-shadow: 0 0 10px var(--swatch); }
+.look-opt.swatch.taken::after {
+    content: '';
+    position: absolute; width: 26px; height: 2px;
+    background: #94a3b8; transform: rotate(-45deg);
+}
+
+.look-label {
+    font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+    color: #64748b; font-weight: 700;
+}
+
+.ready-badge {
+    margin-left: auto; font-size: 10px; font-weight: 700;
+    padding: 2px 6px; border-radius: 6px;
+    background: #1e293b; color: #94a3b8; white-space: nowrap;
+}
+.ready-badge.on { background: #052e16; color: #4ade80; }
 
 /* ---------------- Chat ---------------- */
 
