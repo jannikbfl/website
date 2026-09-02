@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 160" width="320" height="160" role="img"
+     aria-label="Viergewinnt 3D: vier uebereinander liegende Spielebenen mit fallenden Spielsteinen">
+  <!-- Bewusst 2:1 und mittig aufgebaut: die Karte auf der Startseite schneidet
+       das Bild je nach Bildschirmbreite quadratisch oder breit zu. -->
+  <defs>
+    <linearGradient id="bg4" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#132038"/>
+      <stop offset="100%" stop-color="#080f1e"/>
+    </linearGradient>
+
+    <!-- eine Ebene: 4x4-Raster -->
+    <g id="plane4">
+      <rect x="-36" y="-36" width="72" height="72" rx="3" fill="#16233d" stroke="#3b4d6b" stroke-width="2"/>
+      <path d="M-18 -36 V36 M0 -36 V36 M18 -36 V36 M-36 -18 H36 M-36 0 H36 M-36 18 H36"
+            stroke="#3b4d6b" stroke-width="1.2" fill="none"/>
+    </g>
+
+    <circle id="dA" r="7" fill="#38bdf8"/>
+    <polygon id="dB" points="0,-8 8,0 0,8 -8,0" fill="#fbbf24"/>
+    <polygon id="dC" points="0,-8 7,6 -7,6" fill="#34d399"/>
+  </defs>
+
+  <rect width="320" height="160" fill="url(#bg4)"/>
+
+  <!-- fallender Stein als Andeutung der Schwerkraft, darf weggeschnitten werden -->
+  <g opacity="0.5">
+    <circle cx="252" cy="26" r="7" fill="#38bdf8"/>
+    <path d="M252 38 V58" stroke="#38bdf8" stroke-width="2" stroke-dasharray="3 4" opacity="0.7"/>
+  </g>
+
+  <!-- Ebene 1 (unten) -->
+  <g transform="translate(160,124) scale(1,0.55) rotate(45)">
+    <use href="#plane4"/>
+    <use href="#dA" x="-27" y="9"/>
+    <use href="#dB" x="9" y="-9"/>
+    <use href="#dC" x="27" y="27"/>
+  </g>
+
+  <!-- Ebene 2 -->
+  <g transform="translate(160,92) scale(1,0.55) rotate(45)">
+    <use href="#plane4"/>
+    <use href="#dB" x="-27" y="9"/>
+    <use href="#dA" x="9" y="-9"/>
+  </g>
+
+  <!-- Ebene 3 -->
+  <g transform="translate(160,60) scale(1,0.55) rotate(45)">
+    <use href="#plane4"/>
+    <use href="#dA" x="-27" y="9"/>
+    <use href="#dC" x="-9" y="-27"/>
+  </g>
+
+  <!-- Ebene 4 (oben) -->
+  <g transform="translate(160,28) scale(1,0.55) rotate(45)">
+    <use href="#plane4"/>
+    <use href="#dA" x="-27" y="9"/>
+  </g>
+</svg>

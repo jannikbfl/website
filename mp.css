@@ -1,5 +1,5 @@
 /* ============================================================
-   TicTacToe 3D - ttt3d.css
+   Gemeinsame Oberflaeche - mp.css
    Nur das, was Tailwind-Klassen nicht sinnvoll abdecken: Spielfeld,
    Spielerfarben, Lobby-Zeilen und die Animationen fuer die
    Startspieler-Auslosung.
@@ -28,34 +28,34 @@
 
 /* ---------------- Spielfeld ---------------- */
 
-.ttt-levels {
+.mp-levels {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--levels, 3), minmax(0, 1fr));
     gap: 12px;
 }
 @media (max-width: 640px) {
-    .ttt-levels { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .mp-levels { grid-template-columns: minmax(0, 1fr); gap: 16px; }
 }
 
-.ttt-level {
+.mp-level {
     background: #0f172a;
     border: 1px solid #1e293b;
     border-radius: 16px;
     padding: 10px;
 }
-.ttt-level-title {
+.mp-level-title {
     font-size: 10px; font-weight: 700; letter-spacing: .1em;
     text-transform: uppercase; color: #64748b;
     margin-bottom: 8px; text-align: center;
 }
 
-.ttt-board {
+.mp-board {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
     gap: 6px;
 }
 
-.ttt-cell {
+.mp-cell {
     position: relative;
     aspect-ratio: 1 / 1;
     display: flex; align-items: center; justify-content: center;
@@ -71,18 +71,18 @@
 }
 
 /* Nur wenn man selbst am Zug ist, fuehlt sich das Feld anklickbar an. */
-.ttt-cell.playable { cursor: pointer; }
-.ttt-cell.playable:hover { background: #334155; border-color: #64748b; }
-.ttt-cell.playable:active { transform: scale(.94); }
-.ttt-cell:disabled { cursor: default; }
+.mp-cell.playable { cursor: pointer; }
+.mp-cell.playable:hover { background: #334155; border-color: #64748b; }
+.mp-cell.playable:active { transform: scale(.94); }
+.mp-cell:disabled { cursor: default; }
 
-.ttt-cell.taken { background: #0b1220; }
-.ttt-cell.taken.p0 { color: var(--p0); border-color: rgba(56, 189, 248, .45); }
-.ttt-cell.taken.p1 { color: var(--p1); border-color: rgba(251, 191, 36, .45); }
-.ttt-cell.taken.p2 { color: var(--p2); border-color: rgba(52, 211, 153, .45); }
+.mp-cell.taken { background: #0b1220; }
+.mp-cell.taken.p0 { color: var(--p0); border-color: rgba(56, 189, 248, .45); }
+.mp-cell.taken.p1 { color: var(--p1); border-color: rgba(251, 191, 36, .45); }
+.mp-cell.taken.p2 { color: var(--p2); border-color: rgba(52, 211, 153, .45); }
 
 /* Zuletzt gesetzter Stein */
-.ttt-cell.last::after {
+.mp-cell.last::after {
     content: '';
     position: absolute; inset: -3px;
     border-radius: 14px;
@@ -92,24 +92,45 @@
 }
 
 /* Feld gehoert zu mindestens einer gewerteten Dreierreihe */
-.ttt-cell.scored { box-shadow: inset 0 0 0 2px currentColor, 0 0 12px -2px currentColor; }
+.mp-cell.scored { box-shadow: inset 0 0 0 2px currentColor, 0 0 12px -2px currentColor; }
 
-.ttt-cell.flash { animation: ttt-flash .9s ease-out; }
-@keyframes ttt-flash {
+.mp-cell.flash { animation: mp-flash .9s ease-out; }
+@keyframes mp-flash {
     0%   { transform: scale(1);    filter: brightness(1); }
     35%  { transform: scale(1.14); filter: brightness(2.2); }
     100% { transform: scale(1);    filter: brightness(1); }
 }
 
-.ttt-cell.fresh { animation: ttt-pop .25s ease-out; }
-@keyframes ttt-pop {
+/* Vier Ebenen mit 4x4 Feldern brauchen kleinere Zeichen als 3x3. */
+.mp-levels.dense .mp-cell { font-size: clamp(13px, 3.2vw, 24px); border-radius: 9px; }
+.mp-levels.dense .mp-board { gap: 4px; }
+.mp-levels.dense .mp-level { padding: 8px; border-radius: 12px; }
+
+/* Schwerkraft: zeigt beim Zeigen auf eine Saeule, wo der Stein landet. */
+.mp-cell.drop-target {
+    border-color: #e2e8f0;
+    background: #334155;
+}
+.mp-cell.drop-target::before {
+    content: '';
+    position: absolute;
+    width: 42%; height: 42%;
+    border-radius: 999px;
+    border: 2px dashed #94a3b8;
+    opacity: .9;
+}
+/* Die uebrigen Felder derselben Saeule nur andeuten. */
+.mp-cell.drop-column { border-color: #475569; background: #24344b; }
+
+.mp-cell.fresh { animation: mp-pop .25s ease-out; }
+@keyframes mp-pop {
     from { transform: scale(.5); opacity: .2; }
     to   { transform: scale(1);  opacity: 1; }
 }
 
 /* ---------------- Spielerleiste ---------------- */
 
-.ttt-player {
+.mp-player {
     display: flex; align-items: center; gap: 8px;
     background: #0f172a;
     border: 1px solid #1e293b;
@@ -117,18 +138,18 @@
     padding: 8px 12px;
     min-width: 0;
 }
-.ttt-player.active {
+.mp-player.active {
     border-color: var(--seat, #475569);
     background: #111c33;
     box-shadow: 0 0 0 1px var(--seat, #475569), 0 0 18px -6px var(--seat, #475569);
 }
-.ttt-player.gone { opacity: .45; }
-.ttt-player .sym { font-size: 18px; font-weight: 900; color: var(--seat); line-height: 1; }
-.ttt-player .nm  { font-size: 13px; font-weight: 700; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ttt-player .pts { margin-left: auto; font-size: 15px; font-weight: 900; color: var(--seat); font-variant-numeric: tabular-nums; }
+.mp-player.gone { opacity: .45; }
+.mp-player .sym { font-size: 18px; font-weight: 900; color: var(--seat); line-height: 1; }
+.mp-player .nm  { font-size: 13px; font-weight: 700; color: #e2e8f0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mp-player .pts { margin-left: auto; font-size: 15px; font-weight: 900; color: var(--seat); font-variant-numeric: tabular-nums; }
 
-.pts.bump { animation: ttt-bump .5s ease-out; }
-@keyframes ttt-bump {
+.pts.bump { animation: mp-bump .5s ease-out; }
+@keyframes mp-bump {
     0%   { transform: scale(1); }
     40%  { transform: scale(1.6); }
     100% { transform: scale(1); }
@@ -190,16 +211,16 @@
 
 /* ---------------- Overlays ---------------- */
 
-.ttt-overlay {
+.mp-overlay {
     position: fixed; inset: 0; z-index: 40;
     display: flex; align-items: center; justify-content: center;
     background: rgba(2, 6, 23, .88);
     backdrop-filter: blur(3px);
     padding: 16px;
 }
-.ttt-overlay[hidden] { display: none; }
+.mp-overlay[hidden] { display: none; }
 
-.ttt-card {
+.mp-card {
     background: #0f172a;
     border: 1px solid #334155;
     border-radius: 20px;
@@ -218,8 +239,8 @@
     word-break: break-word;
     transition: color .1s;
 }
-.roulette-name.settled { animation: ttt-settle .6s cubic-bezier(.2, 1.4, .4, 1); }
-@keyframes ttt-settle {
+.roulette-name.settled { animation: mp-settle .6s cubic-bezier(.2, 1.4, .4, 1); }
+@keyframes mp-settle {
     0%   { transform: scale(.7); opacity: .4; }
     60%  { transform: scale(1.18); opacity: 1; }
     100% { transform: scale(1); }
@@ -227,7 +248,7 @@
 
 /* ---------------- Chat ---------------- */
 
-.ttt-chat-log {
+.mp-chat-log {
     height: 176px;
     overflow-y: auto;
     overflow-wrap: anywhere;
@@ -254,7 +275,7 @@
 
 .chat-empty { font-size: 11px; color: #64748b; margin: auto 0; text-align: center; }
 
-.ttt-chat-input {
+.mp-chat-input {
     flex: 1 1 auto;
     min-width: 0;
     background: #0f172a;
@@ -264,9 +285,9 @@
     font-size: 12px;
     color: #e2e8f0;
 }
-.ttt-chat-input::placeholder { color: #475569; }
-.ttt-chat-input:focus { outline: none; border-color: #0284c7; }
-.ttt-chat-input:disabled { opacity: .5; }
+.mp-chat-input::placeholder { color: #475569; }
+.mp-chat-input:focus { outline: none; border-color: #0284c7; }
+.mp-chat-input:disabled { opacity: .5; }
 
 /* nur fuer Screenreader */
 .sr-only {
@@ -277,15 +298,15 @@
 
 /* ---------------- Meldungen ---------------- */
 
-.ttt-toast {
+.mp-toast {
     background: #1e293b; border: 1px solid #334155;
     border-radius: 12px; padding: 10px 12px;
     font-size: 12px; color: #e2e8f0;
     box-shadow: 0 10px 30px -12px rgba(0, 0, 0, .9);
-    animation: ttt-toast-in .25s ease-out;
+    animation: mp-toast-in .25s ease-out;
 }
-.ttt-toast.warn { border-color: #b45309; background: #2a1a05; color: #fed7aa; }
-@keyframes ttt-toast-in {
+.mp-toast.warn { border-color: #b45309; background: #2a1a05; color: #fed7aa; }
+@keyframes mp-toast-in {
     from { opacity: 0; transform: translateY(-8px); }
     to   { opacity: 1; transform: translateY(0); }
 }
@@ -297,10 +318,10 @@
 /* ---------------- Bewegung reduzieren ---------------- */
 
 @media (prefers-reduced-motion: reduce) {
-    .ttt-cell.flash,
-    .ttt-cell.fresh,
+    .mp-cell.flash,
+    .mp-cell.fresh,
     .pts.bump,
     .roulette-name.settled,
-    .ttt-toast { animation: none !important; }
-    .ttt-cell, .btn { transition: none !important; }
+    .mp-toast { animation: none !important; }
+    .mp-cell, .btn { transition: none !important; }
 }

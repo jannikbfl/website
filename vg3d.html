@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3DicDacDoe – Multiplayer für 3 Spieler von Jannik Biefel</title>
-    <meta name="description" content="3DicDacDoe: kostenloses Multiplayer-Browserspiel für drei Spieler über drei Ebenen. Lobby, Einladungen und Live-Spiel von mehreren PCs aus – ohne Anmeldung.">
+    <title>Viergewinnt 3D – Multiplayer für 2 oder 3 Spieler von Jannik Biefel</title>
+    <meta name="description" content="Viergewinnt 3D: kostenloses Multiplayer-Browserspiel für zwei oder drei Spieler. Vier Ebenen, 64 Felder, Steine fallen nach unten. Lobby, Einladungen und Live-Spiel von mehreren PCs aus – ohne Anmeldung.">
 
-    <meta property="og:title" content="3DicDacDoe – Multiplayer für 3 Spieler">
-    <meta property="og:description" content="Drei Ebenen, drei Spieler, 49 mögliche Dreierreihen. Kostenloses Multiplayer-Browserspiel von Jannik Biefel.">
+    <meta property="og:title" content="Viergewinnt 3D – Multiplayer für 2 oder 3 Spieler">
+    <meta property="og:description" content="Vier Ebenen, 64 Felder, 76 mögliche Viererreihen. Kostenloses Multiplayer-Browserspiel von Jannik Biefel.">
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://biefel.de/ttt3d.html">
+    <meta property="og:url" content="https://biefel.de/vg3d.html">
     <meta name="twitter:card" content="summary_large_image">
-    <link rel="canonical" href="https://biefel.de/ttt3d.html">
+    <link rel="canonical" href="https://biefel.de/vg3d.html">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="style.css">
@@ -25,7 +25,7 @@
             &larr; Exit
         </a>
         <h1 class="text-sm md:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400 shrink-0 hidden sm:block">
-            3DicDacDoe
+            Viergewinnt 3D
         </h1>
 
         <div class="flex-1 flex items-center justify-end gap-2 text-xs min-w-0">
@@ -77,9 +77,10 @@
                     <p class="font-semibold text-slate-300">So läuft es ab</p>
                     <ol class="list-decimal list-inside space-y-1">
                         <li>Alle Spieler, die diese Seite offen haben, siehst du in der Lobby.</li>
-                        <li>Lade zwei davon ein – ihr seid zu dritt eine Runde.</li>
+                        <li>Lade einen oder zwei davon ein – gespielt wird zu zweit oder zu dritt.</li>
                         <li>Der Rundenadmin bestimmt den Startspieler oder lost ihn aus.</li>
-                        <li>Gespielt wird über drei Ebenen, bis alle 27 Felder voll sind.</li>
+                        <li>Du wählst eine Säule, dein Stein fällt auf die unterste freie Ebene.</li>
+                        <li>Gespielt wird über vier Ebenen, bis alle 64 Felder voll sind.</li>
                     </ol>
                 </div>
             </div>
@@ -95,12 +96,12 @@
                     <span id="lobby-count" class="text-xs text-slate-500">0 online</span>
                 </div>
                 <p class="text-slate-400 text-xs">
-                    Alle, die gerade 3DicDacDoe geöffnet haben. Für eine Runde braucht ihr genau drei Spieler.
+                    Alle, die gerade Viergewinnt 3D geöffnet haben. Eine Runde geht zu zweit oder zu dritt.
                 </p>
                 <div id="lobby-list" class="space-y-2"></div>
                 <p id="lobby-empty" class="text-slate-500 text-xs py-6 text-center" hidden>
                     Außer dir ist gerade niemand da. Schick jemandem den Link
-                    <span class="text-slate-300">biefel.de/ttt3d.html</span> – ihr seht euch dann hier.
+                    <span class="text-slate-300">biefel.de/vg3d.html</span> – ihr seht euch dann hier.
                 </p>
             </div>
 
@@ -150,12 +151,22 @@
             <div class="md:col-span-5 bg-slate-800/60 border border-slate-700 rounded-2xl p-4 text-xs text-slate-400 space-y-2">
                 <p class="font-semibold text-slate-300 text-sm">Regeln</p>
                 <p>
-                    Gespielt wird auf drei nebeneinander liegenden Ebenen mit je 3&times;3 Feldern – zusammen
-                    27 Felder. Eine Dreierreihe beendet das Spiel <b class="text-slate-200">nicht</b>, sondern gibt
-                    einen Punkt. Gezählt werden alle 49 möglichen Dreierreihen: innerhalb einer Ebene, als Säule
-                    durch alle drei Ebenen sowie schräg durch den Würfel. Ein einzelner Zug kann mehrere Reihen
+                    Gespielt wird auf vier nebeneinander liegenden Ebenen mit je 4&times;4 Feldern – zusammen
+                    64 Felder. Ebene 1 ist unten. Du wählst eine der 16 Säulen, und dein Stein fällt auf deren
+                    unterste freie Ebene; anklicken kannst du dafür jedes Feld der Säule, die Vorschau zeigt dir,
+                    wo er landet.
+                </p>
+                <p>
+                    Eine Viererreihe beendet das Spiel <b class="text-slate-200">nicht</b>, sondern gibt einen
+                    Punkt. Gezählt werden alle 76 möglichen Viererreihen: innerhalb einer Ebene, als Säule durch
+                    alle vier Ebenen sowie schräg durch den Würfel. Ein einzelner Zug kann mehrere Reihen
                     gleichzeitig schließen und entsprechend mehrere Punkte bringen. Das Spiel endet, wenn alle
-                    27 Felder belegt sind. Es gewinnt, wer die meisten Punkte gesammelt hat.
+                    64 Felder belegt sind. Es gewinnt, wer die meisten Punkte gesammelt hat.
+                </p>
+                <p>
+                    Zu zweit bekommt jeder 32 Steine. Zu dritt geht 64 nicht glatt auf – der Startspieler setzt
+                    einen Stein mehr als die beiden anderen. Deshalb lohnt es sich, den Startspieler auslosen
+                    zu lassen.
                 </p>
             </div>
         </section>
@@ -179,10 +190,10 @@
                 <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4">
                     <p class="font-semibold text-white text-sm mb-2">Punkte-Verlauf</p>
                     <div id="score-log" class="max-h-40 overflow-y-auto"></div>
-                    <p id="score-log-empty" class="text-slate-500 text-xs py-3">Noch keine Dreierreihe geschlossen.</p>
+                    <p id="score-log-empty" class="text-slate-500 text-xs py-3">Noch keine Viererreihe geschlossen.</p>
                 </div>
 
-                <!-- Rundenchat: nur die drei Spieler dieser Runde -->
+                <!-- Rundenchat: nur die Spieler dieser Runde -->
                 <div class="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-2">
                     <div class="flex items-baseline justify-between">
                         <p class="font-semibold text-white text-sm">Rundenchat</p>
@@ -240,7 +251,7 @@
     <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
     <script src="mp-net.js"></script>
     <script src="mp-core.js"></script>
-    <script src="ttt3d-game.js"></script>
-    <script>MPGame.start(GAME_TTT3D);</script>
+    <script src="vg3d-game.js"></script>
+    <script>MPGame.start(GAME_VG3D);</script>
 </body>
 </html>

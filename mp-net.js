@@ -1,15 +1,17 @@
 /* ============================================================
-   TicTacToe 3D - ttt3d-net.js
+   Multiplayer-Transport - mp-net.js
    Transport-Schicht. Die Seite ist statisch gehostet, es gibt also
    keinen eigenen Server. Stattdessen laeuft die Kommunikation ueber
    einen oeffentlichen MQTT-Broker per WebSocket.
 
-   Topics (alles unter einem eigenen Praefix, damit wir uns nicht mit
-   anderen Nutzern des oeffentlichen Brokers ins Gehege kommen):
+   Topics (alles unter einem eigenen Praefix, damit wir uns weder mit
+   anderen Nutzern des oeffentlichen Brokers noch mit dem jeweils anderen
+   Spiel ins Gehege kommen). <root> gibt das Spiel beim Start mit, z. B.
+   "biefel-de/ttt3d/v1" oder "biefel-de/vg3d/v1":
 
-     biefel-de/ttt3d/v1/lobby            Praesenz, Einladungen
-     biefel-de/ttt3d/v1/room/<id>/state  Rundenzustand (retained, nur Admin sendet)
-     biefel-de/ttt3d/v1/room/<id>/act    Aktionen der Spieler an den Admin
+     <root>/lobby            Praesenz, Einladungen, Lobby-Chat
+     <root>/room/<id>/state  Rundenzustand (retained, nur Admin sendet)
+     <root>/room/<id>/act    Aktionen der Spieler an den Admin
 
    Praesenz ohne Server: jeder Client sendet alle PRESENCE_MS einen
    Heartbeat. Wer sich laenger als PRESENCE_TTL nicht meldet, fliegt
@@ -20,8 +22,9 @@
 (function (global) {
     'use strict';
 
-    var ROOT = 'biefel-de/ttt3d/v1';
-    var T_LOBBY = ROOT + '/lobby';
+    /* Der Topic-Praefix kommt vom Spiel (start({root:...})), damit sich
+       mehrere Spiele denselben Transport teilen, ohne sich zu mischen. */
+
 
     var PRESENCE_MS = 4000;   // Heartbeat-Intervall
     /* Grosszuegig, weil Browser die Timer in Hintergrund-Tabs auf einen Lauf
@@ -98,9 +101,14 @@
 
         /* ---------- Verbindung ---------- */
 
+        root: null,
+        topicLobby: null,
+
         start: function (opts) {
             this.me = { id: opts.id, name: opts.name };
             this._h = opts.handlers || {};
+            this.root = opts.root;
+            this.topicLobby = opts.root + '/lobby';
             this.broker = brokerById(opts.brokerId);
             this._openBroker(this.broker);
         },
@@ -118,7 +126,7 @@
             this._setStatus('connecting');
 
             var will = {
-                topic: T_LOBBY,
+                topic: this.topicLobby,
                 payload: JSON.stringify({ v: 1, t: 'bye', id: this.me.id, name: this.me.name }),
                 qos: 0,
                 retain: false
@@ -141,7 +149,7 @@
             this.client = client;
 
             client.on('connect', function () {
-                client.subscribe(T_LOBBY, { qos: 0 });
+                client.subscribe(self.topicLobby, { qos: 0 });
                 if (self.roomId) self._subscribeRoomTopics(self.roomId);
                 self._setStatus('online');
                 self.publishLobby({ t: 'hello' });
@@ -204,26 +212,26 @@
             msg.v = 1;
             msg.id = this.me.id;
             msg.name = this.me.name;
-            return this._pub(T_LOBBY, msg, false);
+            return this._pub(this.topicLobby, msg, false);
         },
 
         publishAct: function (roomId, msg) {
             msg.v = 1;
             msg.id = this.me.id;
             msg.name = this.me.name;
-            return this._pub(ROOT + '/room/' + roomId + '/act', msg, false);
+            return this._pub(this.root + '/room/' + roomId + '/act', msg, false);
         },
 
         /* Zustand liegt retained auf dem Broker: wer spaeter dazukommt oder
            kurz die Verbindung verliert, bekommt sofort den aktuellen Stand. */
         publishState: function (roomId, state) {
-            return this._pub(ROOT + '/room/' + roomId + '/state', state, true);
+            return this._pub(this.root + '/room/' + roomId + '/state', state, true);
         },
 
         clearState: function (roomId) {
             if (!this.client || !this.client.connected) return;
             try {
-                this.client.publish(ROOT + '/room/' + roomId + '/state', '', { qos: 0, retain: true });
+                this.client.publish(this.root + '/room/' + roomId + '/state', '', { qos: 0, retain: true });
             } catch (e) { /* egal */ }
         },
 
@@ -241,8 +249,8 @@
             if (!this.roomId) return;
             if (this.client && this.client.connected) {
                 try {
-                    this.client.unsubscribe(ROOT + '/room/' + this.roomId + '/state');
-                    this.client.unsubscribe(ROOT + '/room/' + this.roomId + '/act');
+                    this.client.unsubscribe(this.root + '/room/' + this.roomId + '/state');
+                    this.client.unsubscribe(this.root + '/room/' + this.roomId + '/act');
                 } catch (e) { /* egal */ }
             }
             this.roomId = null;
@@ -251,8 +259,8 @@
 
         _subscribeRoomTopics: function (roomId) {
             if (!this.client || !this.client.connected) return;
-            this.client.subscribe(ROOT + '/room/' + roomId + '/state', { qos: 0 });
-            this.client.subscribe(ROOT + '/room/' + roomId + '/act', { qos: 0 });
+            this.client.subscribe(this.root + '/room/' + roomId + '/state', { qos: 0 });
+            this.client.subscribe(this.root + '/room/' + roomId + '/act', { qos: 0 });
         },
 
         /* ---------- Praesenz ---------- */
@@ -307,7 +315,7 @@
             var senderId = cleanId(msg.id);
             if (!senderId) return;
 
-            if (topic === T_LOBBY) return this._onLobby(senderId, msg);
+            if (topic === this.topicLobby) return this._onLobby(senderId, msg);
 
             var m = topic.match(/\/room\/([A-Z0-9]{4,12})\/(state|act)$/);
             if (!m) return;
@@ -363,5 +371,5 @@
         }
     };
 
-    global.TTTNet = Net;
+    global.MPNet = Net;
 })(window);

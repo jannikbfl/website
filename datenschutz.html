@@ -65,23 +65,26 @@
             </section>
 
             <section class="space-y-2">
-                <h2 class="font-semibold text-white text-sm">Multiplayer-Spiel „TicTacToe 3D“</h2>
+                <h2 class="font-semibold text-white text-sm">Multiplayer-Spiele „3DicDacDoe“ und „Viergewinnt 3D“</h2>
                 <p class="text-slate-400 text-sm">
                     Diese Website wird statisch ausgeliefert und betreibt keinen eigenen Spielserver. Damit mehrere
                     Spieler gleichzeitig spielen können, verbindet sich dein Browser beim Öffnen von
-                    <span class="text-slate-300">TicTacToe 3D</span> mit einem öffentlichen MQTT-Broker
+                    <span class="text-slate-300">3DicDacDoe</span> oder <span class="text-slate-300">Viergewinnt 3D</span> mit einem öffentlichen MQTT-Broker
                     (voreingestellt: EMQX, alternativ HiveMQ oder Eclipse Mosquitto). Übertragen werden dabei
-                    ausschließlich der von dir selbst gewählte Nickname, eine zufällige Spieler-ID sowie die
-                    Spielzüge. Technisch bedingt ist für den Betreiber des Brokers zusätzlich deine IP-Adresse
-                    sichtbar. Es findet keine Registrierung statt, und es werden keine Daten dauerhaft auf dem
-                    Broker gespeichert; der Rundenzustand wird beim Verlassen der Runde wieder gelöscht.
-                    Wähle bitte einen Nickname, der keine Rückschlüsse auf deine Person zulässt. Der Nickname
+                    ausschließlich der von dir selbst gewählte Nickname, eine zufällige Spieler-ID, die
+                    Spielzüge sowie die Nachrichten, die du in den Chat schreibst. Technisch bedingt ist für den
+                    Betreiber des Brokers zusätzlich deine IP-Adresse sichtbar. Es findet keine Registrierung
+                    statt, und es werden keine Daten dauerhaft auf dem Broker gespeichert; der Rundenzustand wird
+                    beim Verlassen der Runde wieder gelöscht, und der Chatverlauf existiert nur so lange, wie du
+                    die Seite geöffnet hast. Da der Broker öffentlich ist, können Chatnachrichten technisch von
+                    Dritten mitgelesen werden – schreib dort also nichts Vertrauliches, und wähle einen Nickname,
+                    der keine Rückschlüsse auf deine Person zulässt. Der Nickname,
                     der zuletzt genutzte Server und deine Einstellung für Benachrichtigungen werden zusätzlich
                     lokal in deinem Browser (LocalStorage) gespeichert, damit du sie nicht jedes Mal neu setzen
                     musst. Auf Wunsch zeigt das Spiel eine Browser-Benachrichtigung an, wenn du am Zug bist oder
                     eingeladen wirst; dafür fragt der Browser einmalig um Erlaubnis. Die Meldung wird
                     ausschließlich lokal auf deinem Gerät erzeugt, es werden dafür keine Daten an Dritte
-                    übermittelt. Wenn du das Spiel nicht öffnest, wird auch keine Verbindung zum Broker
+                    übermittelt. Wenn du keines der beiden Spiele öffnest, wird auch keine Verbindung zum Broker
                     aufgebaut.
                 </p>
             </section>

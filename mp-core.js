@@ -1,6 +1,9 @@
 /* ============================================================
-   TicTacToe 3D - ttt3d-ui.js
-   Oberflaeche, Lobby, Matchmaking und Rundenlogik.
+   Multiplayer-Kern - mp-core.js
+   Lobby, Matchmaking, Rundenlogik, Chat und Benachrichtigungen.
+   Alles hier ist spielunabhaengig: 3DicDacDoe und Viergewinnt 3D
+   benutzen denselben Kern und liefern nur einen Adapter (siehe unten)
+   mit ihren Regeln und ihrem Brett.
 
    Rollenmodell: es gibt keinen Spielserver. Wer eine Runde eroeffnet,
    ist "Rundenadmin" und haelt den massgeblichen Spielzustand. Alle
@@ -8,15 +11,25 @@
    Admin; der prueft sie und veroeffentlicht den neuen Gesamtzustand.
    Dadurch kann kein Client das Spielfeld manipulieren, und jeder sieht
    garantiert dasselbe Brett.
+
+   Der Adapter muss liefern:
+     root, name, icon, symbols, seatNames
+     minPlayers, maxPlayers, cells
+     emptyBoard()  isFull(board)  freeCount(board)
+     describeLine(lineIndex)
+     moveForCell(state, cell)   -> tatsaechlich belegtes Feld oder null
+     applyMove(board, playerId, cell) -> Array vollendeter Linien oder null
+     buildBoard(container, onClick)
+     renderBoard(state, ctx)    ctx = {seatOf, myTurn, scoredCells, flashLines}
    ============================================================ */
 
 (function (global) {
     'use strict';
 
-    var G = global.TTT3D;
-    var Net = global.TTTNet;
+    var G = null;    // Spiel-Adapter, gesetzt in MPGame.start()
+    var Net = null;
 
-    var SYMBOLS = ['✕', '◯', '▲'];
+    var SYMBOLS = [];
     var SEAT_NAMES = ['Sitz 1', 'Sitz 2', 'Sitz 3'];
 
     var PING_MS = 4000;        // Lebenszeichen innerhalb einer Runde
@@ -50,7 +63,7 @@
 
     function toast(text, kind) {
         var box = $('toasts');
-        var t = el('div', 'ttt-toast' + (kind ? ' ' + kind : ''), text);
+        var t = el('div', 'mp-toast' + (kind ? ' ' + kind : ''), text);
         box.appendChild(t);
         setTimeout(function () { if (t.parentNode) t.parentNode.removeChild(t); }, 5000);
     }
@@ -87,7 +100,7 @@
     }
 
     function saveNotifyPref() {
-        try { localStorage.setItem('ttt3d.notify', notifyOn ? 'on' : 'off'); } catch (e) { /* egal */ }
+        try { localStorage.setItem('mp.notify', notifyOn ? 'on' : 'off'); } catch (e) { /* egal */ }
     }
 
     /* ask === true nur aus einer echten Nutzeraktion heraus aufrufen,
@@ -133,9 +146,9 @@
         try {
             currentNote = new global.Notification(title, {
                 body: body,
-                tag: tag || 'ttt3d',
+                tag: tag || 'mp',
                 renotify: true,
-                icon: 'assets/ttt3d-thumb.svg'
+                icon: G.icon
             });
             currentNote.onclick = function () {
                 try { global.focus(); } catch (e) { /* egal */ }
@@ -155,11 +168,11 @@
     function updateTitle() {
         var t = baseTitle;
         if (gs && gs.phase === 'play' && gs.turn) {
-            t = gs.turn === me.id ? 'DU BIST DRAN!' : nameOf(gs.turn) + ' ist am Zug · TicTacToe 3D';
+            t = gs.turn === me.id ? 'DU BIST DRAN!' : nameOf(gs.turn) + ' ist am Zug · ' + G.name;
         } else if (gs && gs.phase === 'pick') {
-            t = 'Startspieler wird bestimmt · TicTacToe 3D';
+            t = 'Startspieler wird bestimmt · ' + G.name;
         } else if (gs && gs.phase === 'over') {
-            t = 'Spiel beendet · TicTacToe 3D';
+            t = 'Spiel beendet · ' + G.name;
         }
         if (document.title !== t) document.title = t;
     }
@@ -248,7 +261,7 @@
     var seenScored = 0;   // wie viele Punktereihen wurden schon animiert
     var animatedPick = null;
     var rouletteTimer = null;
-    var cellButtons = [];
+
     var joiningRoom = null;  // Beitritt losgeschickt, Zustand noch nicht da
     var renderedPhase = null;
     var renderedRoom = null;
@@ -277,10 +290,10 @@
             o.value = b.id;
             sel.appendChild(o);
         });
-        var savedBroker = localStorage.getItem('ttt3d.broker') || Net.BROKERS[0].id;
+        var savedBroker = localStorage.getItem('mp.broker') || Net.BROKERS[0].id;
         sel.value = savedBroker;
         sel.addEventListener('change', function () {
-            localStorage.setItem('ttt3d.broker', sel.value);
+            localStorage.setItem('mp.broker', sel.value);
             if (Net.me) {
                 quitRound(true);
                 Net.switchBroker(sel.value);
@@ -288,12 +301,12 @@
             }
         });
 
-        var savedName = localStorage.getItem('ttt3d.name') || '';
+        var savedName = localStorage.getItem('mp.name') || '';
         $('gate-name').value = savedName;
 
         // Benachrichtigungen: gemerkte Einstellung laden, aber die Berechtigung
         // erst beim Betreten der Lobby erfragen (dort gibt es eine Nutzeraktion).
-        notifyOn = localStorage.getItem('ttt3d.notify') !== 'off';
+        notifyOn = localStorage.getItem('mp.notify') !== 'off';
         $('gate-notify').checked = notifyOn && notifyPermission() !== 'denied';
         if (notifyOn && notifyPermission() === 'granted') enableNotifications(false);
         else if (notifyPermission() === 'denied') notifyOn = false;
@@ -328,7 +341,7 @@
             }
             show($('gate-error'), false);
             me.name = name;
-            localStorage.setItem('ttt3d.name', name);
+            localStorage.setItem('mp.name', name);
 
             // Der Klick auf "Lobby betreten" ist die Nutzeraktion, aus der
             // heraus der Browser die Berechtigungsabfrage zulaesst.
@@ -373,6 +386,7 @@
             id: me.id,
             name: me.name,
             brokerId: $('broker-select').value,
+            root: G.root,
             handlers: {
                 onStatus: onStatus,
                 onPlayers: onPlayers,
@@ -442,7 +456,7 @@
 
             if (!p.self) {
                 var canInvite = !p.roomId && !pending[p.id] &&
-                    (!gs || (host && gs.phase === 'lobby' && gs.players.length < 3));
+                    (!gs || (host && gs.phase === 'lobby' && gs.players.length < G.maxPlayers));
                 var b = el('button', 'btn sm primary', pending[p.id] ? 'eingeladen' : 'Einladen');
                 b.disabled = !canInvite;
                 if (pending[p.id]) b.textContent = 'wartet ...';
@@ -472,12 +486,13 @@
         show($('room-hint'), !inRound);
 
         var players = inRound ? gs.players : [];
-        for (var i = 0; i < 3; i++) {
+        for (var i = 0; i < G.maxPlayers; i++) {
             var p = players[i];
             var s = el('div', 'slot seat-' + i + (p ? ' filled' : ''));
             s.appendChild(el('span', 'seat-dot'));
             s.appendChild(el('span', 'font-black', SYMBOLS[i]));
-            s.appendChild(el('span', 'text-sm truncate', p ? p.name : 'frei'));
+            s.appendChild(el('span', 'text-sm truncate',
+                p ? p.name : (i >= G.minPlayers ? 'frei (optional)' : 'frei')));
             if (p && gs && p.id === gs.host) s.appendChild(el('span', 'ml-auto text-[10px] text-amber-400 font-bold', 'ADMIN'));
             slots.appendChild(s);
         }
@@ -489,21 +504,31 @@
         }
 
         var isHost = !!(gs && gs.host === me.id);
-        var full = inRound && gs.players.length === 3;
-        $('btn-start').disabled = !(isHost && full && gs.phase === 'lobby');
-        $('btn-start').textContent = full ? 'Spiel starten' :
-            (inRound ? 'Warte auf ' + (3 - gs.players.length) + ' Spieler' : 'Spiel starten');
+        var count = inRound ? gs.players.length : 0;
+        var ready = inRound && count >= G.minPlayers;
 
-        $('room-role').textContent = !inRound ? ''
-            : (isHost ? 'Du bist Rundenadmin und bestimmst den Startspieler.'
-                      : 'Rundenadmin ist ' + nameOf(gs.host) + '.');
+        $('btn-start').disabled = !(isHost && ready && gs.phase === 'lobby');
+        if (!inRound) $('btn-start').textContent = 'Spiel starten';
+        else if (!ready) $('btn-start').textContent = 'Warte auf ' + (G.minPlayers - count) + ' Spieler';
+        else $('btn-start').textContent = 'Mit ' + count + ' Spielern starten';
+
+        var role = '';
+        if (inRound) {
+            role = isHost ? 'Du bist Rundenadmin und bestimmst den Startspieler.'
+                          : 'Rundenadmin ist ' + nameOf(gs.host) + '.';
+            // Wenn auch weniger als die volle Besetzung reicht, sagen wir das.
+            if (isHost && ready && count < G.maxPlayers) {
+                role = 'Du kannst jetzt starten – oder noch jemanden einladen.';
+            }
+        }
+        $('room-role').textContent = role;
     }
 
     /* ---------------- Matchmaking ---------------- */
 
     function invite(p) {
         if (!gs) hostCreateRoom();
-        if (!host || gs.players.length >= 3) return;
+        if (!host || gs.players.length >= G.maxPlayers) return;
         pending[p.id] = p.name;
         Net.publishLobby({ t: 'invite', to: p.id, roomId: gs.room });
         renderLobby();
@@ -521,7 +546,7 @@
         var stack = $('invite-stack');
         if (stack.querySelector('[data-room="' + inv.roomId + '"]')) return;
 
-        var card = el('div', 'ttt-card pointer-events-auto flex items-center gap-3 max-w-md');
+        var card = el('div', 'mp-card pointer-events-auto flex items-center gap-3 max-w-md');
         card.setAttribute('data-room', inv.roomId);
 
         var txt = el('div', 'flex-1 min-w-0');
@@ -565,7 +590,7 @@
         stack.appendChild(card);
 
         // Eine Einladung im Hintergrund-Tab wuerde man sonst verpassen.
-        pushNote('Einladung zu einer Runde', inv.name + ' lädt dich zu TicTacToe 3D ein.', 'ttt3d-invite');
+        pushNote('Einladung zu einer Runde', inv.name + ' lädt dich zu ' + G.name + ' ein.', 'mp-invite');
 
         setTimeout(close, 45000);
     }
@@ -645,7 +670,7 @@
 
         if (msg.t === 'join') {
             if (memberIndex(senderId) >= 0) { Net.publishState(gs.room, gs); return; }
-            if (gs.phase !== 'lobby' || gs.players.length >= 3) {
+            if (gs.phase !== 'lobby' || gs.players.length >= G.maxPlayers) {
                 Net.publishAct(gs.room, { t: 'full', to: senderId });
                 return;
             }
@@ -688,7 +713,7 @@
     }
 
     function hostStartPick() {
-        if (!host || !gs || gs.phase !== 'lobby' || gs.players.length !== 3) return;
+        if (!host || !gs || gs.phase !== 'lobby' || gs.players.length < G.minPlayers) return;
         hostPublish({ phase: 'pick', pick: null });
     }
 
@@ -731,10 +756,13 @@
     function hostApplyMove(playerId, cell) {
         if (gs.phase !== 'play') return;
         if (gs.turn !== playerId) return;
-        if (typeof cell !== 'number' || cell < 0 || cell >= G.CELLS) return;
+        if (typeof cell !== 'number' || cell < 0 || cell >= G.cells) return;
 
         var board = gs.board.slice();
-        var gained = G.placeStone(board, playerId, cell);
+        // Der Admin prueft den Zug selbst nach - auch bei Schwerkraft muss
+        // das gemeldete Feld genau das sein, auf dem der Stein landen wuerde.
+        if (G.moveForCell({ board: board }, cell) !== cell) return;
+        var gained = G.applyMove(board, playerId, cell);
         if (gained === null) return;
 
         var scored = gs.scored.slice();
@@ -777,7 +805,7 @@
     function onState(roomId, st) {
         if (!Net.roomId || roomId !== Net.roomId) return;
         if (typeof st.seq !== 'number' || !Array.isArray(st.players) || !Array.isArray(st.board)) return;
-        if (st.board.length !== G.CELLS) return;
+        if (st.board.length !== G.cells) return;
         if (st.host !== st.id) return;               // nur der Admin darf den Zustand setzen
         if (host && st.id !== me.id) return;         // fremder Zustand fuer unsere Runde
 
@@ -807,7 +835,7 @@
         var myTurnNow = st.phase === 'play' && st.turn === me.id;
         var myTurnBefore = prevPhase === 'play' && prevTurn === me.id;
         if (myTurnNow && !myTurnBefore) {
-            pushNote('Du bist dran!', 'TicTacToe 3D · Runde ' + st.room, 'ttt3d-turn');
+            pushNote('Du bist dran!', G.name + ' · Runde ' + st.room, 'mp-turn');
         } else if (!myTurnNow) {
             closeNote();
         }
@@ -854,93 +882,55 @@
         } else {
             $('turn-text').textContent = 'Startspieler wird bestimmt …';
         }
-        $('cells-left').textContent = G.freeCells(st.board).length + ' Felder frei';
+        $('cells-left').textContent = G.freeCount(st.board) + ' Felder frei';
 
         if (st.phase === 'over' && prevPhase !== 'over') renderResult();
     }
 
-    /* ---------------- Spielfeld ---------------- */
+    /* ---------------- Spielfeld ----------------
+       Das Brett selbst gehoert dem Adapter - nur hier weiss die Anwendung,
+       wie viele Ebenen es gibt und ob Steine fallen. */
 
     function buildBoard() {
         var hostEl = $('board-host');
         hostEl.textContent = '';
-        cellButtons = [];
-
-        for (var z = 0; z < 3; z++) {
-            var lvl = el('div', 'ttt-level');
-            lvl.appendChild(el('div', 'ttt-level-title', 'Ebene ' + (z + 1)));
-            var grid = el('div', 'ttt-board');
-            for (var r = 0; r < 3; r++) {
-                for (var c = 0; c < 3; c++) {
-                    var i = G.idx(z, r, c);
-                    var b = el('button', 'ttt-cell');
-                    b.type = 'button';
-                    b.disabled = true;
-                    b.setAttribute('data-cell', String(i));
-                    b.setAttribute('aria-label', 'Ebene ' + (z + 1) + ', Reihe ' + (r + 1) + ', Spalte ' + (c + 1));
-                    b.addEventListener('click', onCellClick);
-                    grid.appendChild(b);
-                    cellButtons[i] = b;
-                }
-            }
-            lvl.appendChild(grid);
-            hostEl.appendChild(lvl);
-        }
+        G.buildBoard(hostEl, onCellClick);
     }
 
-    function onCellClick(e) {
-        var cell = parseInt(e.currentTarget.getAttribute('data-cell'), 10);
+    /* Der Klick nennt ein Feld; welches Feld dadurch tatsaechlich belegt
+       wird, entscheidet das Spiel (bei Viergewinnt faellt der Stein). */
+    function onCellClick(cell) {
         if (!gs || gs.phase !== 'play' || gs.turn !== me.id) return;
-        if (gs.board[cell] !== null) return;
+        var target = G.moveForCell(gs, cell);
+        if (target === null) return;
 
-        if (host) hostApplyMove(me.id, cell);
-        else Net.publishAct(gs.room, { t: 'move', cell: cell });
+        if (host) hostApplyMove(me.id, target);
+        else Net.publishAct(gs.room, { t: 'move', cell: target });
     }
 
     function renderBoard() {
         var scoredCells = {};
         gs.scored.forEach(function (s) {
-            var line = G.LINES[s.line];
+            var line = G.lineCells(s.line);
             if (!line) return;
-            scoredCells[line[0]] = true; scoredCells[line[1]] = true; scoredCells[line[2]] = true;
+            for (var i = 0; i < line.length; i++) scoredCells[line[i]] = true;
         });
 
-        var myTurn = gs.phase === 'play' && gs.turn === me.id;
-
-        for (var i = 0; i < G.CELLS; i++) {
-            var b = cellButtons[i];
-            var owner = gs.board[i];
-            var seat = owner ? seatOf(owner, gs) : -1;
-
-            var cls = 'ttt-cell';
-            if (owner) cls += ' taken p' + seat;
-            if (scoredCells[i]) cls += ' scored';
-            if (gs.last === i) cls += ' last';
-            if (!owner && myTurn) cls += ' playable';
-
-            var wasEmpty = b.textContent === '';
-            b.className = cls;
-            b.textContent = owner ? SYMBOLS[seat] : '';
-            b.disabled = !(myTurn && !owner);
-
-            if (owner && wasEmpty) {
-                b.classList.add('fresh');
-                (function (node) { setTimeout(function () { node.classList.remove('fresh'); }, 300); })(b);
-            }
+        // Neu geschlossene Reihen einmal aufblitzen lassen.
+        var flashLines = [];
+        if (gs.scored.length > seenScored) {
+            for (var k = seenScored; k < gs.scored.length; k++) flashLines.push(gs.scored[k].line);
         }
 
-        // Neu geschlossene Reihen einmal aufblitzen lassen.
-        if (gs.scored.length > seenScored) {
-            for (var k = seenScored; k < gs.scored.length; k++) {
-                var l = G.LINES[gs.scored[k].line];
-                if (!l) continue;
-                l.forEach(function (ci) {
-                    var node = cellButtons[ci];
-                    node.classList.remove('flash');
-                    void node.offsetWidth;   // Animation neu starten
-                    node.classList.add('flash');
-                });
-            }
+        G.renderBoard(gs, {
+            seatOf: function (id) { return seatOf(id, gs); },
+            myTurn: gs.phase === 'play' && gs.turn === me.id,
+            scoredCells: scoredCells,
+            flashLines: flashLines,
+            symbols: SYMBOLS
+        });
+
+        if (flashLines.length) {
             seenScored = gs.scored.length;
             bumpScore(gs.scored[gs.scored.length - 1].by);
         }
@@ -953,7 +943,7 @@
         var bar = $('score-bar');
         bar.textContent = '';
         gs.players.forEach(function (p) {
-            var row = el('div', 'ttt-player seat-' + p.seat +
+            var row = el('div', 'mp-player seat-' + p.seat +
                 (gs.turn === p.id ? ' active' : ''));
             row.setAttribute('data-player', p.id);
             row.appendChild(el('span', 'sym', SYMBOLS[p.seat]));
@@ -1077,7 +1067,7 @@
         var ov = $('ov-result');
         show(ov, true);
 
-        var rank = G.ranking(gs.players, gs.scores);
+        var rank = ranking(gs.players, gs.scores);
 
         if (gs.reason === 'aborted') {
             $('result-crown').textContent = '⚠️';
@@ -1097,7 +1087,7 @@
         var tbl = $('result-table');
         tbl.textContent = '';
         rank.list.forEach(function (p, i) {
-            var row = el('div', 'ttt-player seat-' + p.seat);
+            var row = el('div', 'mp-player seat-' + p.seat);
             row.appendChild(el('span', 'text-slate-500 text-xs font-bold w-4', String(i + 1)));
             row.appendChild(el('span', 'sym', SYMBOLS[p.seat]));
             row.appendChild(el('span', 'nm flex-1', p.name + (p.id === me.id ? ' (du)' : '')));
@@ -1181,6 +1171,19 @@
 
     /* ---------------- Hilfsfunktionen auf dem Zustand ---------------- */
 
+    /* Rangliste: absteigend nach Punkten. Gleichstand an der Spitze
+       bedeutet Unentschieden - gilt fuer beide Spiele gleich. */
+    function ranking(players, scores) {
+        var list = players.map(function (p) {
+            return { id: p.id, name: p.name, seat: p.seat, score: scores[p.id] || 0 };
+        });
+        list.sort(function (a, b) { return b.score - a.score; });
+
+        var top = list.length ? list[0].score : 0;
+        var winners = list.filter(function (p) { return p.score === top; });
+        return { list: list, winners: winners, draw: winners.length > 1 };
+    }
+
     function seatOf(playerId, state) {
         var s = state || gs;
         if (!s) return 0;
@@ -1196,6 +1199,17 @@
         return 'Spieler';
     }
 
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
-    else init();
+    /* ---------------- Einstieg ---------------- */
+
+    global.MPGame = {
+        start: function (adapter) {
+            G = adapter;
+            Net = global.MPNet;
+            SYMBOLS = adapter.symbols;
+            if (adapter.seatNames) SEAT_NAMES = adapter.seatNames;
+
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+            else init();
+        }
+    };
 })(window);
