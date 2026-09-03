@@ -13,7 +13,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <link rel="canonical" href="https://biefel.de/vg3d.html">
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="assets/vendor/tailwind.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="mp.css">
 </head>
@@ -69,6 +69,15 @@
                             </span>
                         </span>
                     </label>
+
+                    <p class="text-[11px] text-slate-500 border-t border-slate-700 pt-3">
+                        Mit „Lobby betreten“ baut dein Browser eine Verbindung zu einem öffentlichen
+                        MQTT-Broker auf (voreingestellt EMQX, Server teilweise außerhalb der EU).
+                        Übertragen werden Nickname, Spielzüge und Chatnachrichten; für den Betreiber
+                        ist dabei deine IP-Adresse sichtbar. Der Broker ist öffentlich – schreib dort
+                        nichts Vertrauliches. Details in der
+                        <a href="datenschutz.html" class="text-blue-400 hover:underline">Datenschutzerklärung</a>.
+                    </p>
 
                     <button type="submit" class="btn primary w-full py-3">Lobby betreten</button>
                 </form>
@@ -248,7 +257,7 @@
     <div id="invite-stack" class="fixed inset-x-0 bottom-0 z-50 flex flex-col items-center gap-2 p-3 pointer-events-none"></div>
     <div id="toasts" class="fixed top-16 right-3 z-50 flex flex-col gap-2 w-64 max-w-[75vw]"></div>
 
-    <script src="https://cdn.jsdelivr.net/npm/mqtt@5.10.1/dist/mqtt.min.js"></script>
+    <script src="assets/vendor/mqtt.min.js"></script>
     <script src="mp-net.js"></script>
     <script src="mp-core.js"></script>
     <script src="vg3d-game.js"></script>

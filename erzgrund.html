@@ -12,7 +12,7 @@
     <meta name="twitter:card" content="summary_large_image">
     <link rel="canonical" href="https://biefel.de/erzgrund.html">
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="assets/vendor/tailwind.js"></script>
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="erzgrund.css">
 </head>
@@ -120,5 +120,13 @@
     <script src="erzgrund-engine.js"></script>
     <script src="erzgrund-render.js"></script>
     <script src="erzgrund-ui.js"></script>
+    <!-- Pflichtangaben muessen von jeder Seite aus erreichbar sein, auch aus
+         dem Vollbild-Spiel heraus. Bewusst klein und klickdurchlaessig, damit
+         das Spielfeld darunter bedienbar bleibt. -->
+    <div class="fixed bottom-1 left-1/2 -translate-x-1/2 z-40 text-[10px] text-slate-400 bg-slate-900/70 rounded px-2 py-0.5 pointer-events-none select-none">
+        <a href="impressum.html" class="pointer-events-auto hover:text-slate-300">Impressum</a>
+        <span class="mx-1">·</span>
+        <a href="datenschutz.html" class="pointer-events-auto hover:text-slate-300">Datenschutz</a>
+    </div>
 </body>
 </html>

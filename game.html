@@ -14,7 +14,7 @@
     <meta name="twitter:image" content="https://biefel.de/assets/game-og.png">
     <link rel="canonical" href="https://biefel.de/game.html">
 
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="assets/vendor/tailwind.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans overflow-x-hidden flex flex-col">
@@ -287,6 +287,11 @@
             <button id="modal-close" class="mt-5 w-full py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-sm font-bold transition">Weiter</button>
         </div>
     </div>
+
+    <!-- Pflichtangaben muessen von jeder Seite aus erreichbar sein. -->
+    <footer class="shrink-0 py-4 text-center text-[11px] text-slate-600">
+        &copy; biefel.de · <a href="impressum.html" class="hover:text-slate-300">Impressum</a> · <a href="datenschutz.html" class="hover:text-slate-300">Datenschutz</a>
+    </footer>
 
     <!-- ============ SCRIPTS: Ladereihenfolge data → engine → ui ============ -->
     <script src="numbers.js"></script>

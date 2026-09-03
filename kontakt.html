@@ -12,7 +12,7 @@
     <meta property="og:image" content="https://biefel.de/assets/og-image.png">
     <meta name="twitter:card" content="summary_large_image">
     <link rel="canonical" href="https://biefel.de/kontakt.html">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="assets/vendor/tailwind.js"></script>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen font-sans pb-20 md:pb-0">
 
@@ -39,13 +39,10 @@
                 </p>
             </div>
 
-            <!-- Formular via FormSubmit, leitet nach Absenden auf danke.html weiter.
-                 Der Alias ersetzt die E-Mail-Adresse, damit sie nicht im Quelltext steht. -->
-            <form action="https://formsubmit.co/c89e8e2df9a106686603a62f9860e2a7" method="POST" class="space-y-4 text-left">
-                <input type="hidden" name="_next" value="https://biefel.de/danke.html">
-                <input type="hidden" name="_subject" value="Neue Kontaktanfrage über biefel.de">
-                <input type="text" name="_honey" style="display:none">
-
+            <!-- Bewusst kein Formular-Dienstleister: die Felder öffnen nur das
+                 E-Mail-Programm mit vorausgefülltem Text. Es werden dabei keine
+                 Daten an diese Website oder an Dritte übertragen. -->
+            <form id="kontakt-form" class="space-y-4 text-left">
                 <div>
                     <label for="name" class="block text-xs font-semibold text-slate-400 mb-1">Name</label>
                     <input type="text" id="name" name="name" required class="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500">
@@ -60,15 +57,25 @@
                 </div>
 
                 <button type="submit" class="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition duration-200 shadow-md">
-                    Nachricht senden
+                    E-Mail-Programm öffnen
                 </button>
+
+                <p class="text-slate-500 text-xs">
+                    Der Knopf öffnet dein E-Mail-Programm mit fertig ausgefüllter Nachricht – abgeschickt
+                    wird sie erst von dir. Es läuft kein Formulardienst mit, und die Eingaben verlassen
+                    deinen Rechner nicht, bevor du sendest. Wie ich mit deiner Anfrage umgehe, steht in der
+                    <a href="datenschutz.html" class="text-blue-400 hover:underline">Datenschutzerklärung</a>.
+                </p>
+
+                <p class="text-slate-500 text-xs">
+                    Klappt das nicht? Dann schreib direkt an
+                    <a href="mailto:jannik@biefel.de" class="text-blue-400 hover:underline">jannik@biefel.de</a>.
+                </p>
             </form>
 
-            <!-- Standort / Anfahrt: Platzhalter, siehe Rückfrage im Chat zur Karte -->
             <div class="pt-4 border-t border-slate-700/60 text-left">
                 <h2 class="text-sm font-bold text-white mb-2">Standort</h2>
                 <p class="text-slate-400 text-sm">Haan, Nordrhein-Westfalen</p>
-                <p class="text-slate-500 text-xs mt-1">Genaue Karte &amp; Anfahrt folgen – siehe Rückfrage.</p>
             </div>
         </div>
     </main>
@@ -76,6 +83,30 @@
     <footer class="max-w-2xl mx-auto px-4 py-10 text-center text-xs text-slate-500">
         &copy; biefel.de · <a href="impressum.html" class="hover:text-blue-400">Impressum</a> · <a href="datenschutz.html" class="hover:text-blue-400">Datenschutz</a>
     </footer>
+
+    <script>
+        /* Baut aus den Feldern einen mailto-Link. Ohne JavaScript bleibt der
+           direkte Link darunter als Weg übrig. */
+        (function () {
+            var form = document.getElementById('kontakt-form');
+            if (!form) return;
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                var name = document.getElementById('name').value.trim();
+                var mail = document.getElementById('email').value.trim();
+                var text = document.getElementById('message').value.trim();
+
+                var body = text + '\n\n--\n' + name + '\n' + mail;
+                var url = 'mailto:jannik@biefel.de'
+                    + '?subject=' + encodeURIComponent('Anfrage über biefel.de')
+                    + '&body=' + encodeURIComponent(body);
+
+                window.location.href = url;
+            });
+        })();
+    </script>
 
     <a href="mailto:jannik@biefel.de" class="md:hidden fixed bottom-0 inset-x-0 z-20 flex items-center justify-center gap-2 py-3 bg-blue-600 text-white text-sm font-semibold shadow-[0_-4px_12px_rgba(0,0,0,0.3)]">
         ✉️ Direkt E-Mail schreiben
