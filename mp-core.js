@@ -421,6 +421,7 @@
 
     function enterLobby() {
         setView('lobby');
+        renderLobby();   // Figur-Auswahl sofort zeigen, nicht erst mit dem ersten Heartbeat
         Net.start({
             id: me.id,
             name: me.name,
@@ -539,8 +540,10 @@
                 p ? p.name : (i >= G.minPlayers ? 'frei (optional)' : 'frei')));
             if (p && gs && p.id === gs.host) s.appendChild(el('span', 'text-[10px] text-amber-400 font-bold', 'ADMIN'));
             if (p && G.requireReady) {
-                s.appendChild(el('span', 'ready-badge' + (p.ready ? ' on' : ''),
-                    p.ready ? '✓ bereit' : 'wartet'));
+                var pClash = lookClash(gs, p);
+                s.appendChild(el('span',
+                    'ready-badge' + (p.ready ? ' on' : (pClash ? ' clash' : '')),
+                    pClash ? 'Figur belegt' : (p.ready ? '✓ bereit' : 'wartet')));
             }
             slots.appendChild(s);
         }
@@ -629,69 +632,140 @@
         } catch (e) { /* egal */ }
     }
 
+    /* Kollidiert die Figur eines Spielers mit jemandem, der vorher da war?
+       Der spaeter Gekommene muss wechseln - wer die Figur zuerst hatte,
+       behaelt sie. Host und Clients rechnen das identisch aus dem Zustand. */
+    function lookClash(state, player) {
+        if (!G.looks || !player) return null;
+        var clash = { shape: false, color: false, shapeBy: null, colorBy: null };
+
+        for (var i = 0; i < state.players.length; i++) {
+            var o = state.players[i];
+            if (o.id === player.id || o.seat > player.seat) continue;
+            if (o.shape && o.shape === player.shape) { clash.shape = true; clash.shapeBy = o.name; }
+            if (o.color && o.color === player.color) { clash.color = true; clash.colorBy = o.name; }
+        }
+        return (clash.shape || clash.color) ? clash : null;
+    }
+
     function renderLookPicker() {
         var box = $('look-picker');
         if (!box || !G.looks) return;
 
-        var mine = myPlayer();
-        show(box, !!mine && gs.phase === 'lobby');
-        if (!mine || gs.phase !== 'lobby') return;
+        // Die Auswahl steht auf dem ganzen Lobby-Bildschirm zur Verfuegung -
+        // auch bevor eine Runde existiert. Ohne Runde bearbeitet man damit
+        // seine gemerkte Wunschfigur fuer die naechste Runde.
+        var inRound = !!gs && gs.phase === 'lobby';
+        var mine = inRound ? myPlayer() : null;
+        show(box, view === 'lobby' && (!gs || inRound));
+        if (gs && !inRound) return;
 
-        var locked = !!mine.ready;
-        var piece = pieceOfPlayer(mine);
+        var locked = !!(mine && mine.ready);
+        var clash = mine ? lookClash(gs, mine) : null;
 
-        // Gemerkt wird, was der Admin bestaetigt hat - nicht der blosse Wunsch.
-        myLook.shape = mine.shape || null;
-        myLook.color = mine.color || null;
-        saveLook();
+        var piece, gewaehlt;
+        if (mine) {
+            piece = pieceOfPlayer(mine);
+            gewaehlt = true;
+            // Gemerkt wird, was tatsaechlich im Rundenzustand steht.
+            myLook.shape = mine.shape || null;
+            myLook.color = mine.color || null;
+            saveLook();
+        } else {
+            gewaehlt = !!(myLook.shape || myLook.color);
+            piece = {
+                shape: myLook.shape || G.looks.shapes[0],
+                color: myLook.color || G.looks.colors[0].value
+            };
+        }
 
+        // Belegt ist nur, was ein Mitspieler schon hat.
         var takenShape = {}, takenColor = {};
-        gs.players.forEach(function (p) {
-            if (p.id === me.id) return;
-            if (p.shape) takenShape[p.shape] = p.name;
-            if (p.color) takenColor[p.color] = p.name;
-        });
+        if (mine) {
+            gs.players.forEach(function (p) {
+                if (p.id === me.id) return;
+                if (p.shape) takenShape[p.shape] = p.name;
+                if (p.color) takenColor[p.color] = p.name;
+            });
+        }
 
         var glyph = $('look-glyph');
         glyph.textContent = piece.shape;
+        glyph.style.opacity = gewaehlt ? '1' : '.35';
         tint(glyph, piece.color);
-        tint($('look-picker'), piece.color);
+        tint(box, piece.color);
 
-        $('look-hint').textContent = locked
-            ? 'Du bist bereit. Zum Ändern erst wieder abmelden.'
-            : 'Form und Farbe sind pro Runde eindeutig.';
+        var hint = $('look-hint');
+        hint.classList.remove('text-amber-400');
+        if (clash) {
+            hint.classList.add('text-amber-400');
+            hint.textContent = clash.shape && clash.color
+                ? 'Form und Farbe hat schon ' + (clash.shapeBy || clash.colorBy) + '. Bitte wähl etwas anderes.'
+                : (clash.shape
+                    ? 'Diese Form hat schon ' + clash.shapeBy + '. Bitte wähl eine andere.'
+                    : 'Diese Farbe hat schon ' + clash.colorBy + '. Bitte wähl eine andere.');
+        } else if (locked) {
+            hint.textContent = 'Du bist bereit. Zum Ändern erst wieder abmelden.';
+        } else if (!mine) {
+            hint.textContent = gewaehlt
+                ? 'Damit gehst du in deine nächste Runde.'
+                : 'Noch nichts gewählt – dann bekommst du automatisch eine freie Figur.';
+        } else {
+            hint.textContent = 'Form und Farbe sind pro Runde eindeutig.';
+        }
 
+        /* Die Knoepfe werden genau einmal gebaut und danach nur noch
+           aktualisiert. Wuerden wir sie bei jedem Zustands-Update neu
+           erzeugen, ginge ein Klick verloren, der zufaellig dazwischenfaellt. */
         var sBox = $('look-shapes');
-        sBox.textContent = '';
-        G.looks.shapes.forEach(function (sh) {
+        if (sBox.children.length !== G.looks.shapes.length) {
+            sBox.textContent = '';
+            G.looks.shapes.forEach(function (sh) {
+                var b = el('button', 'look-opt', sh);
+                b.type = 'button';
+                b.addEventListener('click', function () { chooseLook(sh, null); });
+                sBox.appendChild(b);
+            });
+        }
+        G.looks.shapes.forEach(function (sh, i) {
+            var b = sBox.children[i];
             var owner = takenShape[sh];
-            var b = el('button', 'look-opt' + (sh === piece.shape ? ' on' : ''), sh);
-            b.type = 'button';
+            var aktiv = gewaehlt && sh === piece.shape && !(clash && clash.shape);
+            b.className = 'look-opt' + (aktiv ? ' on' : '');
             b.disabled = locked || !!owner;
             b.title = owner ? 'schon von ' + owner + ' belegt' : 'Form ' + sh;
-            b.addEventListener('click', function () { chooseLook(sh, null); });
-            sBox.appendChild(b);
         });
 
         var cBox = $('look-colors');
-        cBox.textContent = '';
-        G.looks.colors.forEach(function (col) {
+        if (cBox.children.length !== G.looks.colors.length) {
+            cBox.textContent = '';
+            G.looks.colors.forEach(function (col) {
+                var b = el('button', 'look-opt swatch');
+                b.type = 'button';
+                b.style.setProperty('--swatch', col.value);
+                b.setAttribute('aria-label', col.name);
+                b.addEventListener('click', function () { chooseLook(null, col.value); });
+                cBox.appendChild(b);
+            });
+        }
+        G.looks.colors.forEach(function (col, i) {
+            var b = cBox.children[i];
             var owner = takenColor[col.value];
-            var b = el('button', 'look-opt swatch'
-                + (col.value === piece.color ? ' on' : '')
-                + (owner ? ' taken' : ''));
-            b.type = 'button';
-            b.style.setProperty('--swatch', col.value);
+            var aktiv = gewaehlt && col.value === piece.color && !(clash && clash.color);
+            b.className = 'look-opt swatch' + (aktiv ? ' on' : '') + (owner ? ' taken' : '');
             b.disabled = locked || !!owner;
             b.title = owner ? col.name + ' – schon von ' + owner + ' belegt' : col.name;
-            b.setAttribute('aria-label', col.name);
-            b.addEventListener('click', function () { chooseLook(null, col.value); });
-            cBox.appendChild(b);
         });
 
+        // Ohne Runde gibt es nichts, wofuer man bereit sein koennte.
         var rb = $('btn-ready');
-        rb.className = 'btn w-full' + (locked ? '' : ' primary');
-        rb.textContent = locked ? '✓ Bereit – doch noch ändern' : 'Bereit';
+        show(rb, !!mine);
+        if (!mine) return;
+
+        rb.disabled = !!clash;
+        rb.className = 'btn w-full' + (locked || clash ? '' : ' primary');
+        rb.textContent = clash ? 'Erst freie Figur wählen'
+                               : (locked ? '✓ Bereit – doch noch ändern' : 'Bereit');
     }
 
     /* Es wird immer nur die tatsaechlich geaenderte Eigenschaft geschickt.
@@ -699,7 +773,17 @@
        Zustand die eigene, gerade erst bestaetigte Wahl wieder ueberschreiben. */
     function chooseLook(shape, color) {
         var mine = myPlayer();
-        if (!mine || mine.ready) return;
+
+        // Ohne Runde wird nur der gemerkte Wunsch bearbeitet.
+        if (!mine) {
+            if (shape) myLook.shape = shape;
+            if (color) myLook.color = color;
+            saveLook();
+            renderLookPicker();
+            return;
+        }
+
+        if (mine.ready) return;
         sendSetup(shape || null, color || null, mine.ready);
     }
 
@@ -912,13 +996,21 @@
         }
     }
 
-    /* Vergibt Form und Farbe. Der Admin ist die einzige Stelle, die das tut -
-       damit kann sich kein Client die Farbe eines anderen greifen. */
+    /* Vergibt Form und Farbe beim Beitritt. Ein ausdruecklicher Wunsch wird
+       immer uebernommen, auch wenn er schon belegt ist - der Spieler sieht
+       die Kollision dann in der Lobby und loest sie selbst auf. Nur wer gar
+       nichts gewaehlt hat, bekommt automatisch etwas Freies. */
     function hostAssignLook(player, wishShape, wishColor) {
         if (!G.looks) return;
         var taken = takenLooks(player.id);
-        player.shape = freeLook(G.looks.shapes, taken.shape, wishShape);
-        player.color = freeLook(colorValues(), taken.color, wishColor);
+
+        player.shape = (typeof wishShape === 'string' && G.looks.shapes.indexOf(wishShape) >= 0)
+            ? wishShape
+            : freeLook(G.looks.shapes, taken.shape, null);
+
+        player.color = (typeof wishColor === 'string' && colorValues().indexOf(wishColor) >= 0)
+            ? wishColor
+            : freeLook(colorValues(), taken.color, null);
     }
 
     function hostSetup(playerId, wish) {
@@ -945,7 +1037,9 @@
                 && wish.color !== p.color) { p.color = wish.color; changed = true; }
         }
 
-        var ready = !!wish.ready;
+        // Wer noch eine belegte Figur hat, kann sich nicht bereit melden.
+        // Der Knopf ist dafuer schon gesperrt; das hier ist die Absicherung.
+        var ready = !!wish.ready && !lookClash(gs, p);
         if (ready !== !!p.ready) { p.ready = ready; changed = true; }
 
         if (changed) hostPublish({});
