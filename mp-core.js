@@ -539,11 +539,16 @@
             s.appendChild(el('span', 'text-sm truncate',
                 p ? p.name : (i >= G.minPlayers ? 'frei (optional)' : 'frei')));
             if (p && gs && p.id === gs.host) s.appendChild(el('span', 'text-[10px] text-amber-400 font-bold', 'ADMIN'));
-            if (p && G.requireReady) {
+            if (p) {
+                // Eine doppelte Figur wird immer gemeldet, auch in Spielen
+                // ohne Bereitmeldung.
                 var pClash = lookClash(gs, p);
-                s.appendChild(el('span',
-                    'ready-badge' + (p.ready ? ' on' : (pClash ? ' clash' : '')),
-                    pClash ? 'Figur belegt' : (p.ready ? '✓ bereit' : 'wartet')));
+                if (pClash) {
+                    s.appendChild(el('span', 'ready-badge clash', 'Figur belegt'));
+                } else if (G.requireReady) {
+                    s.appendChild(el('span', 'ready-badge' + (p.ready ? ' on' : ''),
+                        p.ready ? '✓ bereit' : 'wartet'));
+                }
             }
             slots.appendChild(s);
         }
@@ -558,10 +563,12 @@
         var count = inRound ? gs.players.length : 0;
         var enough = inRound && count >= G.minPlayers;
         var allReady = inRound && everyoneReady();
+        var clashes = inRound && anyClash();
 
-        $('btn-start').disabled = !(isHost && enough && allReady && gs.phase === 'lobby');
+        $('btn-start').disabled = !(isHost && enough && allReady && !clashes && gs.phase === 'lobby');
         if (!inRound) $('btn-start').textContent = 'Spiel starten';
         else if (!enough) $('btn-start').textContent = 'Warte auf ' + (G.minPlayers - count) + ' Spieler';
+        else if (clashes) $('btn-start').textContent = 'Zwei Figuren sind gleich';
         else if (!allReady) $('btn-start').textContent = 'Warte auf ' + waitingCount() + ' Bereitmeldung' + (waitingCount() === 1 ? '' : 'en');
         else $('btn-start').textContent = 'Mit ' + count + ' Spielern starten';
 
@@ -584,6 +591,17 @@
         if (!gs) return false;
         for (var i = 0; i < gs.players.length; i++) if (!gs.players[i].ready) return false;
         return true;
+    }
+
+    /* Zwei gleiche Figuren duerfen nie ins Spiel. Bei Spielen mit
+       Bereitmeldung faengt die das schon ab - ohne sie sperrt das hier
+       direkt den Start. */
+    function anyClash() {
+        if (!G.looks || !gs) return false;
+        for (var i = 0; i < gs.players.length; i++) {
+            if (lookClash(gs, gs.players[i])) return true;
+        }
+        return false;
     }
 
     function waitingCount() {
@@ -757,10 +775,11 @@
             b.title = owner ? col.name + ' – schon von ' + owner + ' belegt' : col.name;
         });
 
-        // Ohne Runde gibt es nichts, wofuer man bereit sein koennte.
+        // Ohne Runde gibt es nichts, wofuer man bereit sein koennte - und
+        // nicht jedes Spiel verlangt ueberhaupt eine Bereitmeldung.
         var rb = $('btn-ready');
-        show(rb, !!mine);
-        if (!mine) return;
+        show(rb, !!mine && !!G.requireReady);
+        if (!mine || !G.requireReady) return;
 
         rb.disabled = !!clash;
         rb.className = 'btn w-full' + (locked || clash ? '' : ' primary');
@@ -1065,7 +1084,7 @@
 
     function hostStartPick() {
         if (!host || !gs || gs.phase !== 'lobby' || gs.players.length < G.minPlayers) return;
-        if (!everyoneReady()) return;
+        if (!everyoneReady() || anyClash()) return;
         hostPublish({ phase: 'pick', pick: null });
     }
 
@@ -1558,7 +1577,30 @@
 
     /* ---------------- Einstieg ---------------- */
 
+    /* Gemeinsamer Figuren-Katalog. Beide Spiele greifen darauf zu, damit die
+       Auswahl nicht an zwei Stellen gepflegt werden muss.
+       Bewusst nur geometrische Zeichen: die haben keine Emoji-Variante und
+       werden deshalb ueberall einfarbig gezeichnet, also in der gewaehlten
+       Spielerfarbe statt bunt vom System. */
+    var LOOKS = {
+        shapes: ['✕', '✚', '◯', '●', '▲', '▼', '◆', '◇', '■', '□', '★', '◐'],
+        colors: [
+            { id: 'himmel',    value: '#38bdf8', name: 'Himmelblau' },
+            { id: 'bernstein', value: '#fbbf24', name: 'Bernstein' },
+            { id: 'smaragd',   value: '#34d399', name: 'Smaragd' },
+            { id: 'rose',      value: '#fb7185', name: 'Rose' },
+            { id: 'violett',   value: '#c084fc', name: 'Violett' },
+            { id: 'orange',    value: '#fb923c', name: 'Orange' },
+            { id: 'tuerkis',   value: '#22d3ee', name: 'Türkis' },
+            { id: 'limette',   value: '#a3e635', name: 'Limette' },
+            { id: 'pink',      value: '#f472b6', name: 'Pink' },
+            { id: 'schnee',    value: '#e2e8f0', name: 'Schnee' }
+        ]
+    };
+
     global.MPGame = {
+        LOOKS: LOOKS,
+
         start: function (adapter) {
             G = adapter;
             Net = global.MPNet;

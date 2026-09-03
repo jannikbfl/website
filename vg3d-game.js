@@ -279,10 +279,15 @@
         root: 'biefel-de/vg3d/v1',
         name: 'Viergewinnt 3D',
         icon: 'assets/vg3d-thumb.svg',
-        symbols: ['●', '◆', '▲'],
+        symbols: ['●', '◆', '▲'],   // Rueckfallwerte, falls jemand nichts waehlt
         minPlayers: 2,
         maxPlayers: 3,
         cells: CELLS,
+
+        /* Form und Farbe waehlt jeder selbst - derselbe Katalog wie beim
+           Schwesterspiel. Eine Bereitmeldung gibt es hier bewusst nicht;
+           der Start ist trotzdem gesperrt, solange zwei Figuren gleich sind. */
+        looks: global.MPGame.LOOKS,
 
         emptyBoard: emptyBoard,
         isFull: isFull,

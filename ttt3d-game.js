@@ -230,25 +230,8 @@
         maxPlayers: 3,
         cells: CELLS,
 
-        /* Jeder waehlt in der Lobby Form und Farbe und meldet sich bereit.
-           Bewusst nur geometrische Zeichen: die haben keine Emoji-Variante
-           und werden deshalb ueberall einfarbig gezeichnet, also in der
-           gewaehlten Spielerfarbe statt bunt vom System. */
-        looks: {
-            shapes: ['✕', '✚', '◯', '●', '▲', '▼', '◆', '◇', '■', '□', '★', '◐'],
-            colors: [
-                { id: 'himmel',  value: '#38bdf8', name: 'Himmelblau' },
-                { id: 'bernstein', value: '#fbbf24', name: 'Bernstein' },
-                { id: 'smaragd', value: '#34d399', name: 'Smaragd' },
-                { id: 'rose',    value: '#fb7185', name: 'Rose' },
-                { id: 'violett', value: '#c084fc', name: 'Violett' },
-                { id: 'orange',  value: '#fb923c', name: 'Orange' },
-                { id: 'tuerkis', value: '#22d3ee', name: 'Türkis' },
-                { id: 'limette', value: '#a3e635', name: 'Limette' },
-                { id: 'pink',    value: '#f472b6', name: 'Pink' },
-                { id: 'schnee',  value: '#e2e8f0', name: 'Schnee' }
-            ]
-        },
+        // Jeder waehlt in der Lobby Form und Farbe und meldet sich bereit.
+        looks: global.MPGame.LOOKS,
         requireReady: true,
 
         emptyBoard: emptyBoard,

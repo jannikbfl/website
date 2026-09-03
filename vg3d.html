@@ -132,6 +132,27 @@
 
                 <div id="room-pending" class="space-y-1"></div>
 
+                <!-- Spielfigur: Form und Farbe. Wird von mp-core gefüllt, wenn
+                     das Spiel eine Auswahl mitbringt. Der Bereit-Knopf bleibt
+                     hier ungenutzt – Viergewinnt verlangt keine Bereitmeldung. -->
+                <div id="look-picker" class="space-y-2 border-t border-slate-700 pt-3" hidden>
+                    <div class="look-preview">
+                        <span id="look-glyph" class="glyph">✕</span>
+                        <div class="min-w-0">
+                            <div class="text-xs font-bold text-slate-200">Deine Spielfigur</div>
+                            <div id="look-hint" class="text-[11px] text-slate-500">Form und Farbe sind pro Runde eindeutig.</div>
+                        </div>
+                    </div>
+
+                    <div class="look-label">Form</div>
+                    <div id="look-shapes" class="look-grid"></div>
+
+                    <div class="look-label">Farbe</div>
+                    <div id="look-colors" class="look-grid"></div>
+
+                    <button id="btn-ready" class="btn primary w-full" hidden>Bereit</button>
+                </div>
+
                 <div class="flex gap-2 pt-1">
                     <button id="btn-start" class="btn gold flex-1" disabled>Spiel starten</button>
                     <button id="btn-dissolve" class="btn danger" hidden>Auflösen</button>
